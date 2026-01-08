@@ -22,7 +22,9 @@ async function gcLibModule(moduleArg = {}) {
 
   var TARGET_NOT_SUPPORTED = 2147483647;
 
-  var currentNodeVersion = typeof process !== 'undefined' && process?.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
+  // Note: We use a typeof check here instead of optional chaining using
+  // globalThis because older browsers might not have globalThis defined.
+  var currentNodeVersion = typeof process !== 'undefined' && process.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
   if (currentNodeVersion < TARGET_NOT_SUPPORTED) {
     throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
   }
@@ -30,17 +32,22 @@ async function gcLibModule(moduleArg = {}) {
     throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable(2147483647) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
   }
 
-  var currentSafariVersion = typeof navigator !== 'undefined' && navigator?.userAgent?.includes("Safari/") && navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : TARGET_NOT_SUPPORTED;
+  var userAgent = typeof navigator !== 'undefined' && navigator.userAgent;
+  if (!userAgent) {
+    return;
+  }
+
+  var currentSafariVersion = userAgent.includes("Safari/") && !userAgent.includes("Chrome/") && userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : TARGET_NOT_SUPPORTED;
   if (currentSafariVersion < 150000) {
     throw new Error(`This emscripten-generated code requires Safari v${ packedVersionToHumanReadable(150000) } (detected v${currentSafariVersion})`);
   }
 
-  var currentFirefoxVersion = typeof navigator !== 'undefined' && navigator?.userAgent?.match(/Firefox\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
+  var currentFirefoxVersion = userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/) ? parseFloat(userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
   if (currentFirefoxVersion < 79) {
     throw new Error(`This emscripten-generated code requires Firefox v79 (detected v${currentFirefoxVersion})`);
   }
 
-  var currentChromeVersion = typeof navigator !== 'undefined' && navigator?.userAgent?.match(/Chrome\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
+  var currentChromeVersion = userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/) ? parseFloat(userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
   if (currentChromeVersion < 85) {
     throw new Error(`This emscripten-generated code requires Chrome v85 (detected v${currentChromeVersion})`);
   }
@@ -2248,12 +2255,13 @@ async function createWasm() {
         };
   
         // sync all mounts
-        mounts.forEach((mount) => {
-          if (!mount.type.syncfs) {
-            return done(null);
+        for (var mount of mounts) {
+          if (mount.type.syncfs) {
+            mount.type.syncfs(mount, populate, done);
+          } else {
+            done(null);
           }
-          mount.type.syncfs(mount, populate, done);
-        });
+        }
       },
   mount(type, opts, mountpoint) {
         if (typeof type == 'string') {
@@ -2320,9 +2328,7 @@ async function createWasm() {
         var mount = node.mounted;
         var mounts = FS.getMounts(mount);
   
-        Object.keys(FS.nameTable).forEach((hash) => {
-          var current = FS.nameTable[hash];
-  
+        for (var [hash, current] of Object.entries(FS.nameTable)) {
           while (current) {
             var next = current.name_next;
   
@@ -2332,7 +2338,7 @@ async function createWasm() {
   
             current = next;
           }
-        });
+        }
   
         // no longer a mountpoint
         node.mounted = null;
@@ -3376,14 +3382,12 @@ async function createWasm() {
         });
         // override each stream op with one that tries to force load the lazy file first
         var stream_ops = {};
-        var keys = Object.keys(node.stream_ops);
-        keys.forEach((key) => {
-          var fn = node.stream_ops[key];
+        for (const [key, fn] of Object.entries(node.stream_ops)) {
           stream_ops[key] = (...args) => {
             FS.forceLoadFile(node);
             return fn(...args);
           };
-        });
+        }
         function writeChunks(stream, buffer, offset, length, position) {
           var contents = stream.node.contents;
           if (position >= contents.length)
@@ -3825,9 +3829,6 @@ async function createWasm() {
   var onExits = [];
   var addOnExit = (cb) => onExits.push(cb);
   var JSEvents = {
-  memcpy(target, src, size) {
-        HEAP8.set(HEAP8.subarray(src, src + size), target);
-      },
   removeAllEventListeners() {
         while (JSEvents.eventHandlers.length) {
           JSEvents._removeHandler(JSEvents.eventHandlers.length - 1);
@@ -3932,6 +3933,21 @@ async function createWasm() {
           }
         }
         return 0;
+      },
+  removeSingleHandler(eventHandler) {
+        let success = false;
+        for (let i = 0; i < JSEvents.eventHandlers.length; ++i) {
+          const handler = JSEvents.eventHandlers[i];
+          if (handler.target === eventHandler.target
+            && handler.eventTypeId === eventHandler.eventTypeId
+            && handler.callbackfunc === eventHandler.callbackfunc
+            && handler.userData === eventHandler.userData) {
+            // in some very rare cases (ex: Safari / fullscreen events), there is more than 1 handler (eventTypeString is different)
+            JSEvents._removeHandler(i--);
+            success = true;
+          }
+        }
+        return success ? 0 : -5;
       },
   getNodeNameForTarget(target) {
         if (!target) return '';
@@ -4304,14 +4320,14 @@ async function createWasm() {
           GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
         }
   
-        getEmscriptenSupportedExtensions(GLctx).forEach((ext) => {
+        for (var ext of getEmscriptenSupportedExtensions(GLctx)) {
           // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
           // are not enabled by default.
           if (!ext.includes('lose_context') && !ext.includes('debug')) {
             // Call .getExtension() to enable that extension permanently.
             GLctx.getExtension(ext);
           }
-        });
+        }
       },
   };
   var _emscripten_glActiveTexture = (x0) => GLctx.activeTexture(x0);
@@ -4352,7 +4368,8 @@ async function createWasm() {
   var _emscripten_glBindVertexArray = (vao) => {
       GLctx.bindVertexArray(GL.vaos[vao]);
     };
-  var _emscripten_glBindVertexArrayOES = _emscripten_glBindVertexArray;
+  var _glBindVertexArray = _emscripten_glBindVertexArray;
+  var _emscripten_glBindVertexArrayOES = _glBindVertexArray;
 
   var _emscripten_glBlendColor = (x0, x1, x2, x3) => GLctx.blendColor(x0, x1, x2, x3);
 
@@ -4534,7 +4551,8 @@ async function createWasm() {
         GL.vaos[id] = null;
       }
     };
-  var _emscripten_glDeleteVertexArraysOES = _emscripten_glDeleteVertexArrays;
+  var _glDeleteVertexArrays = _emscripten_glDeleteVertexArrays;
+  var _emscripten_glDeleteVertexArraysOES = _glDeleteVertexArrays;
 
   var _emscripten_glDepthFunc = (x0) => GLctx.depthFunc(x0);
 
@@ -4564,7 +4582,8 @@ async function createWasm() {
   var _emscripten_glDrawArraysInstanced = (mode, first, count, primcount) => {
       GLctx.drawArraysInstanced(mode, first, count, primcount);
     };
-  var _emscripten_glDrawArraysInstancedANGLE = _emscripten_glDrawArraysInstanced;
+  var _glDrawArraysInstanced = _emscripten_glDrawArraysInstanced;
+  var _emscripten_glDrawArraysInstancedANGLE = _glDrawArraysInstanced;
 
   
   var tempFixedLengthArray = [];
@@ -4578,7 +4597,8 @@ async function createWasm() {
   
       GLctx.drawBuffers(bufArray);
     };
-  var _emscripten_glDrawBuffersWEBGL = _emscripten_glDrawBuffers;
+  var _glDrawBuffers = _emscripten_glDrawBuffers;
+  var _emscripten_glDrawBuffersWEBGL = _glDrawBuffers;
 
   var _emscripten_glDrawElements = (mode, count, type, indices) => {
   
@@ -4590,7 +4610,8 @@ async function createWasm() {
   var _emscripten_glDrawElementsInstanced = (mode, count, type, indices, primcount) => {
       GLctx.drawElementsInstanced(mode, count, type, indices, primcount);
     };
-  var _emscripten_glDrawElementsInstancedANGLE = _emscripten_glDrawElementsInstanced;
+  var _glDrawElementsInstanced = _emscripten_glDrawElementsInstanced;
+  var _emscripten_glDrawElementsInstancedANGLE = _glDrawElementsInstanced;
 
   var _emscripten_glEnable = (x0) => GLctx.enable(x0);
 
@@ -4658,7 +4679,8 @@ async function createWasm() {
       GL.genObject(n, arrays, 'createVertexArray', GL.vaos
         );
     };
-  var _emscripten_glGenVertexArraysOES = _emscripten_glGenVertexArrays;
+  var _glGenVertexArrays = _emscripten_glGenVertexArrays;
+  var _emscripten_glGenVertexArraysOES = _glGenVertexArrays;
 
   var _emscripten_glGenerateMipmap = (x0) => GLctx.generateMipmap(x0);
 
@@ -4953,10 +4975,12 @@ async function createWasm() {
     };
 
   
-  var _emscripten_glGetQueryObjectui64vEXT = _emscripten_glGetQueryObjecti64vEXT;
+  var _glGetQueryObjecti64vEXT = _emscripten_glGetQueryObjecti64vEXT;
+  var _emscripten_glGetQueryObjectui64vEXT = _glGetQueryObjecti64vEXT;
 
   
-  var _emscripten_glGetQueryObjectuivEXT = _emscripten_glGetQueryObjectivEXT;
+  var _glGetQueryObjectivEXT = _emscripten_glGetQueryObjectivEXT;
+  var _emscripten_glGetQueryObjectuivEXT = _glGetQueryObjectivEXT;
 
   var _emscripten_glGetQueryivEXT = (target, pname, params) => {
       if (!params) {
@@ -5372,7 +5396,8 @@ async function createWasm() {
       if (!vao) return 0;
       return GLctx.isVertexArray(vao);
     };
-  var _emscripten_glIsVertexArrayOES = _emscripten_glIsVertexArray;
+  var _glIsVertexArray = _emscripten_glIsVertexArray;
+  var _emscripten_glIsVertexArrayOES = _glIsVertexArray;
 
   var _emscripten_glLineWidth = (x0) => GLctx.lineWidth(x0);
 
@@ -5863,7 +5888,8 @@ async function createWasm() {
   var _emscripten_glVertexAttribDivisor = (index, divisor) => {
       GLctx.vertexAttribDivisor(index, divisor);
     };
-  var _emscripten_glVertexAttribDivisorANGLE = _emscripten_glVertexAttribDivisor;
+  var _glVertexAttribDivisor = _emscripten_glVertexAttribDivisor;
+  var _emscripten_glVertexAttribDivisorANGLE = _glVertexAttribDivisor;
 
   var _emscripten_glVertexAttribPointer = (index, size, type, normalized, stride, ptr) => {
       GLctx.vertexAttribPointer(index, size, type, !!normalized, stride, ptr);
@@ -5988,9 +6014,10 @@ async function createWasm() {
   
   
   var registerFocusEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.focusEvent ||= _malloc(256);
+      var eventSize = 256;
+      JSEvents.focusEvent ||= _malloc(eventSize);
   
-      var focusEventHandlerFunc = (e = event) => {
+      var focusEventHandlerFunc = (e) => {
         var nodeName = JSEvents.getNodeNameForTarget(e.target);
         var id = e.target.id ? e.target.id : '';
   
@@ -6004,6 +6031,8 @@ async function createWasm() {
       var eventHandler = {
         target: findEventTarget(target),
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: focusEventHandlerFunc,
         useCapture
@@ -6050,10 +6079,11 @@ async function createWasm() {
   
   
   var registerMouseEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.mouseEvent ||= _malloc(64);
+      var eventSize = 64;
+      JSEvents.mouseEvent ||= _malloc(eventSize);
       target = findEventTarget(target);
   
-      var mouseEventHandlerFunc = (e = event) => {
+      var mouseEventHandlerFunc = (e) => {
         // TODO: Make this access thread safe, or this could update live while app is reading it.
         fillMouseEventData(JSEvents.mouseEvent, e, target);
   
@@ -6064,6 +6094,8 @@ async function createWasm() {
         target,
         allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: mouseEventHandlerFunc,
         useCapture
@@ -6109,11 +6141,11 @@ async function createWasm() {
     };
   
   var registerFullscreenChangeEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.fullscreenChangeEvent ||= _malloc(276);
+      var eventSize = 276;
+      JSEvents.fullscreenChangeEvent ||= _malloc(eventSize);
   
-      var fullscreenChangeEventhandlerFunc = (e = event) => {
+      var fullscreenChangeEventhandlerFunc = (e) => {
         var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
-  
         fillFullscreenChangeEventData(fullscreenChangeEvent);
   
         if (((a1, a2, a3) => dynCall_iiii(callbackfunc, a1, a2, a3))(eventTypeId, fullscreenChangeEvent, userData)) e.preventDefault();
@@ -6122,6 +6154,8 @@ async function createWasm() {
       var eventHandler = {
         target,
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: fullscreenChangeEventhandlerFunc,
         useCapture
@@ -6135,6 +6169,7 @@ async function createWasm() {
       if (!target) return -4;
   
       // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
+      // TODO: When this block is removed, also change test/test_html5_remove_event_listener.c test expectation on emscripten_set_fullscreenchange_callback().
       registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, 19, "webkitfullscreenchange", targetThread);
   
       return registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, 19, "fullscreenchange", targetThread);
@@ -6144,9 +6179,10 @@ async function createWasm() {
   
   
   var registerGamepadEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.gamepadEvent ||= _malloc(1240);
+      var eventSize = 1240;
+      JSEvents.gamepadEvent ||= _malloc(eventSize);
   
-      var gamepadEventHandlerFunc = (e = event) => {
+      var gamepadEventHandlerFunc = (e) => {
         var gamepadEvent = JSEvents.gamepadEvent;
         fillGamepadEventData(gamepadEvent, e["gamepad"]);
   
@@ -6157,6 +6193,8 @@ async function createWasm() {
         target: findEventTarget(target),
         allowsDeferredCalls: true,
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: gamepadEventHandlerFunc,
         useCapture
@@ -6193,9 +6231,10 @@ async function createWasm() {
     };
   
   var registerPointerlockChangeEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.pointerlockChangeEvent ||= _malloc(257);
+      var eventSize = 257;
+      JSEvents.pointerlockChangeEvent ||= _malloc(eventSize);
   
-      var pointerlockChangeEventHandlerFunc = (e = event) => {
+      var pointerlockChangeEventHandlerFunc = (e) => {
         var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
         fillPointerlockChangeEventData(pointerlockChangeEvent);
   
@@ -6205,6 +6244,8 @@ async function createWasm() {
       var eventHandler = {
         target,
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: pointerlockChangeEventHandlerFunc,
         useCapture
@@ -6225,11 +6266,12 @@ async function createWasm() {
   
   
   var registerUiEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.uiEvent ||= _malloc(36);
+      var eventSize = 36;
+      JSEvents.uiEvent ||= _malloc(eventSize);
   
       target = findEventTarget(target);
   
-      var uiEventHandlerFunc = (e = event) => {
+      var uiEventHandlerFunc = (e) => {
         if (e.target != target) {
           // Never take ui events such as scroll via a 'bubbled' route, but always from the direct element that
           // was targeted. Otherwise e.g. if app logs a message in response to a page scroll, the Emscripten log
@@ -6258,6 +6300,8 @@ async function createWasm() {
       var eventHandler = {
         target,
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: uiEventHandlerFunc,
         useCapture
@@ -6271,7 +6315,8 @@ async function createWasm() {
   
   
   var registerTouchEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.touchEvent ||= _malloc(1552);
+      var eventSize = 1552;
+      JSEvents.touchEvent ||= _malloc(eventSize);
   
       target = findEventTarget(target);
   
@@ -6336,6 +6381,8 @@ async function createWasm() {
         target,
         allowsDeferredCalls: eventTypeString == 'touchstart' || eventTypeString == 'touchend',
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: touchEventHandlerFunc,
         useCapture
@@ -6366,11 +6413,11 @@ async function createWasm() {
     };
   
   var registerVisibilityChangeEventCallback = (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
-      JSEvents.visibilityChangeEvent ||= _malloc(8);
+      var eventSize = 8;
+      JSEvents.visibilityChangeEvent ||= _malloc(eventSize);
   
-      var visibilityChangeEventHandlerFunc = (e = event) => {
+      var visibilityChangeEventHandlerFunc = (e) => {
         var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
-  
         fillVisibilityChangeEventData(visibilityChangeEvent);
   
         if (((a1, a2, a3) => dynCall_iiii(callbackfunc, a1, a2, a3))(eventTypeId, visibilityChangeEvent, userData)) e.preventDefault();
@@ -6379,6 +6426,8 @@ async function createWasm() {
       var eventHandler = {
         target,
         eventTypeString,
+        eventTypeId,
+        userData,
         callbackfunc,
         handlerFunc: visibilityChangeEventHandlerFunc,
         useCapture
@@ -9573,61 +9622,61 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var ASM_CONSTS = {
-  140776: () => { if (document.fullscreenElement) return 1; },  
- 140822: () => { return Module.canvas.width; },  
- 140854: () => { return parseInt(Module.canvas.style.width); },  
- 140902: () => { document.exitFullscreen(); },  
- 140929: () => { setTimeout(function() { Module.requestFullscreen(false, false); }, 100); },  
- 141002: () => { if (document.fullscreenElement) return 1; },  
- 141048: () => { return Module.canvas.width; },  
- 141080: () => { return screen.width; },  
- 141105: () => { document.exitFullscreen(); },  
- 141132: () => { setTimeout(function() { Module.requestFullscreen(false, true); setTimeout(function() { canvas.style.width="unset"; }, 100); }, 100); },  
- 141265: () => { return window.innerWidth; },  
- 141291: () => { return window.innerHeight; },  
- 141318: () => { if (document.fullscreenElement) return 1; },  
- 141364: () => { return Module.canvas.width; },  
- 141396: () => { return parseInt(Module.canvas.style.width); },  
- 141444: () => { if (document.fullscreenElement) return 1; },  
- 141490: () => { return Module.canvas.width; },  
- 141522: () => { return screen.width; },  
- 141547: () => { return window.innerWidth; },  
- 141573: () => { return window.innerHeight; },  
- 141600: () => { if (document.fullscreenElement) return 1; },  
- 141646: () => { return Module.canvas.width; },  
- 141678: () => { return screen.width; },  
- 141703: () => { document.exitFullscreen(); },  
- 141730: () => { if (document.fullscreenElement) return 1; },  
- 141776: () => { return Module.canvas.width; },  
- 141808: () => { return parseInt(Module.canvas.style.width); },  
- 141856: () => { document.exitFullscreen(); },  
- 141883: ($0) => { Module.canvas.style.opacity = $0; },  
- 141921: () => { return screen.width; },  
- 141946: () => { return screen.height; },  
- 141972: () => { return window.screenX; },  
- 141999: () => { return window.screenY; },  
- 142026: () => { return window.devicePixelRatio; },  
- 142062: ($0) => { navigator.clipboard.writeText(UTF8ToString($0)); },  
- 142115: ($0) => { Module.canvas.style.cursor = UTF8ToString($0); },  
- 142166: () => { Module.canvas.style.cursor = 'none'; },  
- 142203: ($0, $1, $2, $3) => { try { navigator.getGamepads()[$0].vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: $3, weakMagnitude: $1, strongMagnitude: $2 }); } catch (e) { try { navigator.getGamepads()[$0].hapticActuators[0].pulse($2, $3); } catch (e) { } } },  
- 142459: ($0) => { Module.canvas.style.cursor = UTF8ToString($0); },  
- 142510: () => { if (document.pointerLockElement) return 1; },  
- 142557: () => { if (document.fullscreenElement) return 1; },  
- 142603: () => { return window.innerWidth; },  
- 142629: () => { return window.innerHeight; },  
- 142656: ($0, $1, $2, $3, $4) => { if (typeof window === 'undefined' || (window.AudioContext || window.webkitAudioContext) === undefined) { return 0; } if (typeof(window.miniaudio) === 'undefined') { window.miniaudio = { referenceCount: 0 }; window.miniaudio.device_type = {}; window.miniaudio.device_type.playback = $0; window.miniaudio.device_type.capture = $1; window.miniaudio.device_type.duplex = $2; window.miniaudio.device_state = {}; window.miniaudio.device_state.stopped = $3; window.miniaudio.device_state.started = $4; let miniaudio = window.miniaudio; miniaudio.devices = []; miniaudio.track_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == null) { miniaudio.devices[iDevice] = device; return iDevice; } } miniaudio.devices.push(device); return miniaudio.devices.length - 1; }; miniaudio.untrack_device_by_index = function(deviceIndex) { miniaudio.devices[deviceIndex] = null; while (miniaudio.devices.length > 0) { if (miniaudio.devices[miniaudio.devices.length-1] == null) { miniaudio.devices.pop(); } else { break; } } }; miniaudio.untrack_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == device) { return miniaudio.untrack_device_by_index(iDevice); } } }; miniaudio.get_device_by_index = function(deviceIndex) { return miniaudio.devices[deviceIndex]; }; miniaudio.unlock_event_types = (function(){ return ['touchend', 'click']; })(); miniaudio.unlock = function() { for(var i = 0; i < miniaudio.devices.length; ++i) { var device = miniaudio.devices[i]; if (device != null && device.webaudio != null && device.state === miniaudio.device_state.started) { device.webaudio.resume().then(() => { _ma_device__on_notification_unlocked(device.pDevice); }, (error) => {console.error("Failed to resume audiocontext", error); }); } } miniaudio.unlock_event_types.map(function(event_type) { document.removeEventListener(event_type, miniaudio.unlock, true); }); }; miniaudio.unlock_event_types.map(function(event_type) { document.addEventListener(event_type, miniaudio.unlock, true); }); } window.miniaudio.referenceCount += 1; return 1; },  
- 144834: () => { if (typeof(window.miniaudio) !== 'undefined') { miniaudio.unlock_event_types.map(function(event_type) { document.removeEventListener(event_type, miniaudio.unlock, true); }); window.miniaudio.referenceCount -= 1; if (window.miniaudio.referenceCount === 0) { delete window.miniaudio; } } },  
- 145124: () => { return (navigator.mediaDevices !== undefined && navigator.mediaDevices.getUserMedia !== undefined); },  
- 145228: () => { try { var temp = new (window.AudioContext || window.webkitAudioContext)(); var sampleRate = temp.sampleRate; temp.close(); return sampleRate; } catch(e) { return 0; } },  
- 145399: ($0, $1, $2, $3, $4, $5) => { var deviceType = $0; var channels = $1; var sampleRate = $2; var bufferSize = $3; var pIntermediaryBuffer = $4; var pDevice = $5; if (typeof(window.miniaudio) === 'undefined') { return -1; } var device = {}; var audioContextOptions = {}; if (deviceType == window.miniaudio.device_type.playback && sampleRate != 0) { audioContextOptions.sampleRate = sampleRate; } device.webaudio = new (window.AudioContext || window.webkitAudioContext)(audioContextOptions); device.webaudio.suspend(); device.state = window.miniaudio.device_state.stopped; var channelCountIn = 0; var channelCountOut = channels; if (deviceType != window.miniaudio.device_type.playback) { channelCountIn = channels; } device.scriptNode = device.webaudio.createScriptProcessor(bufferSize, channelCountIn, channelCountOut); device.scriptNode.onaudioprocess = function(e) { if (device.intermediaryBufferView == null || device.intermediaryBufferView.length == 0) { device.intermediaryBufferView = new Float32Array(HEAPF32.buffer, pIntermediaryBuffer, bufferSize * channels); } if (deviceType == window.miniaudio.device_type.capture || deviceType == window.miniaudio.device_type.duplex) { for (var iChannel = 0; iChannel < channels; iChannel += 1) { var inputBuffer = e.inputBuffer.getChannelData(iChannel); var intermediaryBuffer = device.intermediaryBufferView; for (var iFrame = 0; iFrame < bufferSize; iFrame += 1) { intermediaryBuffer[iFrame*channels + iChannel] = inputBuffer[iFrame]; } } _ma_device_process_pcm_frames_capture__webaudio(pDevice, bufferSize, pIntermediaryBuffer); } if (deviceType == window.miniaudio.device_type.playback || deviceType == window.miniaudio.device_type.duplex) { _ma_device_process_pcm_frames_playback__webaudio(pDevice, bufferSize, pIntermediaryBuffer); for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { var outputBuffer = e.outputBuffer.getChannelData(iChannel); var intermediaryBuffer = device.intermediaryBufferView; for (var iFrame = 0; iFrame < bufferSize; iFrame += 1) { outputBuffer[iFrame] = intermediaryBuffer[iFrame*channels + iChannel]; } } } else { for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { e.outputBuffer.getChannelData(iChannel).fill(0.0); } } }; if (deviceType == window.miniaudio.device_type.capture || deviceType == window.miniaudio.device_type.duplex) { navigator.mediaDevices.getUserMedia({audio:true, video:false}) .then(function(stream) { device.streamNode = device.webaudio.createMediaStreamSource(stream); device.streamNode.connect(device.scriptNode); device.scriptNode.connect(device.webaudio.destination); }) .catch(function(error) { console.log("Failed to get user media: " + error); }); } if (deviceType == window.miniaudio.device_type.playback) { device.scriptNode.connect(device.webaudio.destination); } device.pDevice = pDevice; return window.miniaudio.track_device(device); },  
- 148276: ($0) => { return window.miniaudio.get_device_by_index($0).webaudio.sampleRate; },  
- 148349: ($0) => { var device = window.miniaudio.get_device_by_index($0); if (device.scriptNode !== undefined) { device.scriptNode.onaudioprocess = function(e) {}; device.scriptNode.disconnect(); device.scriptNode = undefined; } if (device.streamNode !== undefined) { device.streamNode.disconnect(); device.streamNode = undefined; } device.webaudio.close(); device.webaudio = undefined; device.pDevice = undefined; },  
- 148749: ($0) => { window.miniaudio.untrack_device_by_index($0); },  
- 148799: ($0) => { var device = window.miniaudio.get_device_by_index($0); device.webaudio.resume(); device.state = window.miniaudio.device_state.started; },  
- 148938: ($0) => { var device = window.miniaudio.get_device_by_index($0); device.webaudio.suspend(); device.state = window.miniaudio.device_state.stopped; }
+  140397: () => { if (document.fullscreenElement) return 1; },  
+ 140443: () => { return Module.canvas.width; },  
+ 140475: () => { return parseInt(Module.canvas.style.width); },  
+ 140523: () => { document.exitFullscreen(); },  
+ 140550: () => { setTimeout(function(){ Module.requestFullscreen(false, false); }, 100); },  
+ 140622: () => { if (document.fullscreenElement) return 1; },  
+ 140668: () => { return Module.canvas.width; },  
+ 140700: () => { return screen.width; },  
+ 140725: () => { document.exitFullscreen(); },  
+ 140752: () => { setTimeout(function() { Module.requestFullscreen(false, true); setTimeout(function() { canvas.style.width="unset"; }, 100); }, 100); },  
+ 140885: () => { return window.innerWidth; },  
+ 140911: () => { return window.innerHeight; },  
+ 140938: () => { if (document.fullscreenElement) return 1; },  
+ 140984: () => { return Module.canvas.width; },  
+ 141016: () => { return parseInt(Module.canvas.style.width); },  
+ 141064: () => { if (document.fullscreenElement) return 1; },  
+ 141110: () => { return Module.canvas.width; },  
+ 141142: () => { return screen.width; },  
+ 141167: () => { return window.innerWidth; },  
+ 141193: () => { return window.innerHeight; },  
+ 141220: () => { if (document.fullscreenElement) return 1; },  
+ 141266: () => { return Module.canvas.width; },  
+ 141298: () => { return screen.width; },  
+ 141323: () => { document.exitFullscreen(); },  
+ 141350: () => { if (document.fullscreenElement) return 1; },  
+ 141396: () => { return Module.canvas.width; },  
+ 141428: () => { return parseInt(Module.canvas.style.width); },  
+ 141476: () => { document.exitFullscreen(); },  
+ 141503: ($0) => { Module.canvas.style.opacity = $0; },  
+ 141541: () => { return screen.width; },  
+ 141566: () => { return screen.height; },  
+ 141592: () => { return window.screenX; },  
+ 141619: () => { return window.screenY; },  
+ 141646: () => { return window.devicePixelRatio; },  
+ 141682: ($0) => { navigator.clipboard.writeText(UTF8ToString($0)); },  
+ 141735: ($0) => { Module.canvas.style.cursor = UTF8ToString($0); },  
+ 141786: () => { Module.canvas.style.cursor = 'none'; },  
+ 141823: ($0, $1, $2, $3) => { try { navigator.getGamepads()[$0].vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: $3, weakMagnitude: $1, strongMagnitude: $2 }); } catch (e) { try { navigator.getGamepads()[$0].hapticActuators[0].pulse($2, $3); } catch (e) { } } },  
+ 142079: ($0) => { Module.canvas.style.cursor = UTF8ToString($0); },  
+ 142130: () => { if (document.pointerLockElement) return 1; },  
+ 142177: () => { if (document.fullscreenElement) return 1; },  
+ 142223: () => { return window.innerWidth; },  
+ 142249: () => { return window.innerHeight; },  
+ 142276: ($0, $1, $2, $3, $4) => { if (typeof window === 'undefined' || (window.AudioContext || window.webkitAudioContext) === undefined) { return 0; } if (typeof(window.miniaudio) === 'undefined') { window.miniaudio = { referenceCount: 0 }; window.miniaudio.device_type = {}; window.miniaudio.device_type.playback = $0; window.miniaudio.device_type.capture = $1; window.miniaudio.device_type.duplex = $2; window.miniaudio.device_state = {}; window.miniaudio.device_state.stopped = $3; window.miniaudio.device_state.started = $4; let miniaudio = window.miniaudio; miniaudio.devices = []; miniaudio.track_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == null) { miniaudio.devices[iDevice] = device; return iDevice; } } miniaudio.devices.push(device); return miniaudio.devices.length - 1; }; miniaudio.untrack_device_by_index = function(deviceIndex) { miniaudio.devices[deviceIndex] = null; while (miniaudio.devices.length > 0) { if (miniaudio.devices[miniaudio.devices.length-1] == null) { miniaudio.devices.pop(); } else { break; } } }; miniaudio.untrack_device = function(device) { for (var iDevice = 0; iDevice < miniaudio.devices.length; ++iDevice) { if (miniaudio.devices[iDevice] == device) { return miniaudio.untrack_device_by_index(iDevice); } } }; miniaudio.get_device_by_index = function(deviceIndex) { return miniaudio.devices[deviceIndex]; }; miniaudio.unlock_event_types = (function(){ return ['touchend', 'click']; })(); miniaudio.unlock = function() { for(var i = 0; i < miniaudio.devices.length; ++i) { var device = miniaudio.devices[i]; if (device != null && device.webaudio != null && device.state === miniaudio.device_state.started) { device.webaudio.resume().then(() => { _ma_device__on_notification_unlocked(device.pDevice); }, (error) => {console.error("Failed to resume audiocontext", error); }); } } miniaudio.unlock_event_types.map(function(event_type) { document.removeEventListener(event_type, miniaudio.unlock, true); }); }; miniaudio.unlock_event_types.map(function(event_type) { document.addEventListener(event_type, miniaudio.unlock, true); }); } window.miniaudio.referenceCount += 1; return 1; },  
+ 144454: () => { if (typeof(window.miniaudio) !== 'undefined') { miniaudio.unlock_event_types.map(function(event_type) { document.removeEventListener(event_type, miniaudio.unlock, true); }); window.miniaudio.referenceCount -= 1; if (window.miniaudio.referenceCount === 0) { delete window.miniaudio; } } },  
+ 144744: () => { return (navigator.mediaDevices !== undefined && navigator.mediaDevices.getUserMedia !== undefined); },  
+ 144848: () => { try { var temp = new (window.AudioContext || window.webkitAudioContext)(); var sampleRate = temp.sampleRate; temp.close(); return sampleRate; } catch(e) { return 0; } },  
+ 145019: ($0, $1, $2, $3, $4, $5) => { var deviceType = $0; var channels = $1; var sampleRate = $2; var bufferSize = $3; var pIntermediaryBuffer = $4; var pDevice = $5; if (typeof(window.miniaudio) === 'undefined') { return -1; } var device = {}; var audioContextOptions = {}; if (deviceType == window.miniaudio.device_type.playback && sampleRate != 0) { audioContextOptions.sampleRate = sampleRate; } device.webaudio = new (window.AudioContext || window.webkitAudioContext)(audioContextOptions); device.webaudio.suspend(); device.state = window.miniaudio.device_state.stopped; var channelCountIn = 0; var channelCountOut = channels; if (deviceType != window.miniaudio.device_type.playback) { channelCountIn = channels; } device.scriptNode = device.webaudio.createScriptProcessor(bufferSize, channelCountIn, channelCountOut); device.scriptNode.onaudioprocess = function(e) { if (device.intermediaryBufferView == null || device.intermediaryBufferView.length == 0) { device.intermediaryBufferView = new Float32Array(HEAPF32.buffer, pIntermediaryBuffer, bufferSize * channels); } if (deviceType == window.miniaudio.device_type.capture || deviceType == window.miniaudio.device_type.duplex) { for (var iChannel = 0; iChannel < channels; iChannel += 1) { var inputBuffer = e.inputBuffer.getChannelData(iChannel); var intermediaryBuffer = device.intermediaryBufferView; for (var iFrame = 0; iFrame < bufferSize; iFrame += 1) { intermediaryBuffer[iFrame*channels + iChannel] = inputBuffer[iFrame]; } } _ma_device_process_pcm_frames_capture__webaudio(pDevice, bufferSize, pIntermediaryBuffer); } if (deviceType == window.miniaudio.device_type.playback || deviceType == window.miniaudio.device_type.duplex) { _ma_device_process_pcm_frames_playback__webaudio(pDevice, bufferSize, pIntermediaryBuffer); for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { var outputBuffer = e.outputBuffer.getChannelData(iChannel); var intermediaryBuffer = device.intermediaryBufferView; for (var iFrame = 0; iFrame < bufferSize; iFrame += 1) { outputBuffer[iFrame] = intermediaryBuffer[iFrame*channels + iChannel]; } } } else { for (var iChannel = 0; iChannel < e.outputBuffer.numberOfChannels; ++iChannel) { e.outputBuffer.getChannelData(iChannel).fill(0.0); } } }; if (deviceType == window.miniaudio.device_type.capture || deviceType == window.miniaudio.device_type.duplex) { navigator.mediaDevices.getUserMedia({audio:true, video:false}) .then(function(stream) { device.streamNode = device.webaudio.createMediaStreamSource(stream); device.streamNode.connect(device.scriptNode); device.scriptNode.connect(device.webaudio.destination); }) .catch(function(error) { console.log("Failed to get user media: " + error); }); } if (deviceType == window.miniaudio.device_type.playback) { device.scriptNode.connect(device.webaudio.destination); } device.pDevice = pDevice; return window.miniaudio.track_device(device); },  
+ 147896: ($0) => { return window.miniaudio.get_device_by_index($0).webaudio.sampleRate; },  
+ 147969: ($0) => { var device = window.miniaudio.get_device_by_index($0); if (device.scriptNode !== undefined) { device.scriptNode.onaudioprocess = function(e) {}; device.scriptNode.disconnect(); device.scriptNode = undefined; } if (device.streamNode !== undefined) { device.streamNode.disconnect(); device.streamNode = undefined; } device.webaudio.close(); device.webaudio = undefined; device.pDevice = undefined; },  
+ 148369: ($0) => { window.miniaudio.untrack_device_by_index($0); },  
+ 148419: ($0) => { var device = window.miniaudio.get_device_by_index($0); device.webaudio.resume(); device.state = window.miniaudio.device_state.started; },  
+ 148558: ($0) => { var device = window.miniaudio.get_device_by_index($0); device.webaudio.suspend(); device.state = window.miniaudio.device_state.stopped; }
 };
-function GetCanvasIdJs() { var canvasId = "#" + Module.canvas.id; var lengthBytes = lengthBytesUTF8(canvasId) + 1; var stringOnWasmHeap = _malloc(lengthBytes); stringToUTF8(canvasId, stringOnWasmHeap, lengthBytes); return stringOnWasmHeap; }
+function SetCanvasIdJs(out,outSize) { var canvasId = "#" + Module.canvas.id; stringToUTF8(canvasId, out, outSize); }
 
 // Imports from the Wasm binary.
 var _add = Module['_add'] = makeInvalidEarlyAccess('_add');
@@ -9768,278 +9817,278 @@ var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
 
 function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['add'] != 'undefined', 'missing Wasm export: add');
-  _add = Module['_add'] = createExportWrapper('add', 2);
   assert(typeof wasmExports['gc_GetRandomNumber'] != 'undefined', 'missing Wasm export: gc_GetRandomNumber');
-  _gc_GetRandomNumber = Module['_gc_GetRandomNumber'] = createExportWrapper('gc_GetRandomNumber', 2);
   assert(typeof wasmExports['gc_GetFrameTime'] != 'undefined', 'missing Wasm export: gc_GetFrameTime');
-  _gc_GetFrameTime = Module['_gc_GetFrameTime'] = createExportWrapper('gc_GetFrameTime', 0);
   assert(typeof wasmExports['gc_InitWindow'] != 'undefined', 'missing Wasm export: gc_InitWindow');
-  _gc_InitWindow = Module['_gc_InitWindow'] = createExportWrapper('gc_InitWindow', 3);
   assert(typeof wasmExports['gc_WindowShouldClose'] != 'undefined', 'missing Wasm export: gc_WindowShouldClose');
-  _gc_WindowShouldClose = Module['_gc_WindowShouldClose'] = createExportWrapper('gc_WindowShouldClose', 0);
   assert(typeof wasmExports['gc_CloseWindow'] != 'undefined', 'missing Wasm export: gc_CloseWindow');
-  _gc_CloseWindow = Module['_gc_CloseWindow'] = createExportWrapper('gc_CloseWindow', 0);
   assert(typeof wasmExports['gc_InitAudioDevice'] != 'undefined', 'missing Wasm export: gc_InitAudioDevice');
-  _gc_InitAudioDevice = Module['_gc_InitAudioDevice'] = createExportWrapper('gc_InitAudioDevice', 0);
   assert(typeof wasmExports['gc_CloseAudioDevice'] != 'undefined', 'missing Wasm export: gc_CloseAudioDevice');
-  _gc_CloseAudioDevice = Module['_gc_CloseAudioDevice'] = createExportWrapper('gc_CloseAudioDevice', 0);
   assert(typeof wasmExports['gc_BeginDrawing'] != 'undefined', 'missing Wasm export: gc_BeginDrawing');
-  _gc_BeginDrawing = Module['_gc_BeginDrawing'] = createExportWrapper('gc_BeginDrawing', 0);
   assert(typeof wasmExports['gc_EndDrawing'] != 'undefined', 'missing Wasm export: gc_EndDrawing');
-  _gc_EndDrawing = Module['_gc_EndDrawing'] = createExportWrapper('gc_EndDrawing', 0);
   assert(typeof wasmExports['gc_IsKeyPressed'] != 'undefined', 'missing Wasm export: gc_IsKeyPressed');
-  _gc_IsKeyPressed = Module['_gc_IsKeyPressed'] = createExportWrapper('gc_IsKeyPressed', 1);
   assert(typeof wasmExports['gc_IsKeyReleased'] != 'undefined', 'missing Wasm export: gc_IsKeyReleased');
-  _gc_IsKeyReleased = Module['_gc_IsKeyReleased'] = createExportWrapper('gc_IsKeyReleased', 1);
   assert(typeof wasmExports['gc_IsKeyUp'] != 'undefined', 'missing Wasm export: gc_IsKeyUp');
-  _gc_IsKeyUp = Module['_gc_IsKeyUp'] = createExportWrapper('gc_IsKeyUp', 1);
   assert(typeof wasmExports['gc_IsKeyDown'] != 'undefined', 'missing Wasm export: gc_IsKeyDown');
-  _gc_IsKeyDown = Module['_gc_IsKeyDown'] = createExportWrapper('gc_IsKeyDown', 1);
   assert(typeof wasmExports['gc_IsMouseButtonPressed'] != 'undefined', 'missing Wasm export: gc_IsMouseButtonPressed');
-  _gc_IsMouseButtonPressed = Module['_gc_IsMouseButtonPressed'] = createExportWrapper('gc_IsMouseButtonPressed', 1);
   assert(typeof wasmExports['gc_IsMouseButtonReleased'] != 'undefined', 'missing Wasm export: gc_IsMouseButtonReleased');
-  _gc_IsMouseButtonReleased = Module['_gc_IsMouseButtonReleased'] = createExportWrapper('gc_IsMouseButtonReleased', 1);
   assert(typeof wasmExports['gc_IsMouseButtonUp'] != 'undefined', 'missing Wasm export: gc_IsMouseButtonUp');
-  _gc_IsMouseButtonUp = Module['_gc_IsMouseButtonUp'] = createExportWrapper('gc_IsMouseButtonUp', 1);
   assert(typeof wasmExports['gc_IsMouseButtonDown'] != 'undefined', 'missing Wasm export: gc_IsMouseButtonDown');
-  _gc_IsMouseButtonDown = Module['_gc_IsMouseButtonDown'] = createExportWrapper('gc_IsMouseButtonDown', 1);
   assert(typeof wasmExports['gc_GetMousePositionX'] != 'undefined', 'missing Wasm export: gc_GetMousePositionX');
-  _gc_GetMousePositionX = Module['_gc_GetMousePositionX'] = createExportWrapper('gc_GetMousePositionX', 0);
   assert(typeof wasmExports['gc_GetMousePositionY'] != 'undefined', 'missing Wasm export: gc_GetMousePositionY');
-  _gc_GetMousePositionY = Module['_gc_GetMousePositionY'] = createExportWrapper('gc_GetMousePositionY', 0);
   assert(typeof wasmExports['gc_SetMousePosition'] != 'undefined', 'missing Wasm export: gc_SetMousePosition');
-  _gc_SetMousePosition = Module['_gc_SetMousePosition'] = createExportWrapper('gc_SetMousePosition', 2);
   assert(typeof wasmExports['gc_ShowCursor'] != 'undefined', 'missing Wasm export: gc_ShowCursor');
-  _gc_ShowCursor = Module['_gc_ShowCursor'] = createExportWrapper('gc_ShowCursor', 0);
   assert(typeof wasmExports['gc_HideCursor'] != 'undefined', 'missing Wasm export: gc_HideCursor');
-  _gc_HideCursor = Module['_gc_HideCursor'] = createExportWrapper('gc_HideCursor', 0);
   assert(typeof wasmExports['gc_IsCursorHidden'] != 'undefined', 'missing Wasm export: gc_IsCursorHidden');
-  _gc_IsCursorHidden = Module['_gc_IsCursorHidden'] = createExportWrapper('gc_IsCursorHidden', 0);
   assert(typeof wasmExports['gc_EnableCursor'] != 'undefined', 'missing Wasm export: gc_EnableCursor');
-  _gc_EnableCursor = Module['_gc_EnableCursor'] = createExportWrapper('gc_EnableCursor', 0);
   assert(typeof wasmExports['gc_DisableCursor'] != 'undefined', 'missing Wasm export: gc_DisableCursor');
-  _gc_DisableCursor = Module['_gc_DisableCursor'] = createExportWrapper('gc_DisableCursor', 0);
   assert(typeof wasmExports['gc_IsCursorOnScreen'] != 'undefined', 'missing Wasm export: gc_IsCursorOnScreen');
-  _gc_IsCursorOnScreen = Module['_gc_IsCursorOnScreen'] = createExportWrapper('gc_IsCursorOnScreen', 0);
   assert(typeof wasmExports['gc_CreateCamera'] != 'undefined', 'missing Wasm export: gc_CreateCamera');
-  _gc_CreateCamera = Module['_gc_CreateCamera'] = createExportWrapper('gc_CreateCamera', 6);
   assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
-  _malloc = createExportWrapper('malloc', 1);
   assert(typeof wasmExports['gc_MoveCamera2DX'] != 'undefined', 'missing Wasm export: gc_MoveCamera2DX');
-  _gc_MoveCamera2DX = Module['_gc_MoveCamera2DX'] = createExportWrapper('gc_MoveCamera2DX', 2);
   assert(typeof wasmExports['gc_MoveCamera2DY'] != 'undefined', 'missing Wasm export: gc_MoveCamera2DY');
-  _gc_MoveCamera2DY = Module['_gc_MoveCamera2DY'] = createExportWrapper('gc_MoveCamera2DY', 2);
   assert(typeof wasmExports['gc_UnloadCamera'] != 'undefined', 'missing Wasm export: gc_UnloadCamera');
-  _gc_UnloadCamera = Module['_gc_UnloadCamera'] = createExportWrapper('gc_UnloadCamera', 1);
   assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
-  _free = createExportWrapper('free', 1);
   assert(typeof wasmExports['gc_BeginMode2D'] != 'undefined', 'missing Wasm export: gc_BeginMode2D');
-  _gc_BeginMode2D = Module['_gc_BeginMode2D'] = createExportWrapper('gc_BeginMode2D', 1);
   assert(typeof wasmExports['gc_EndMode2D'] != 'undefined', 'missing Wasm export: gc_EndMode2D');
-  _gc_EndMode2D = Module['_gc_EndMode2D'] = createExportWrapper('gc_EndMode2D', 0);
   assert(typeof wasmExports['gc_LoadSound'] != 'undefined', 'missing Wasm export: gc_LoadSound');
-  _gc_LoadSound = Module['_gc_LoadSound'] = createExportWrapper('gc_LoadSound', 1);
   assert(typeof wasmExports['gc_UnloadSound'] != 'undefined', 'missing Wasm export: gc_UnloadSound');
-  _gc_UnloadSound = Module['_gc_UnloadSound'] = createExportWrapper('gc_UnloadSound', 1);
   assert(typeof wasmExports['gc_PlaySound'] != 'undefined', 'missing Wasm export: gc_PlaySound');
-  _gc_PlaySound = Module['_gc_PlaySound'] = createExportWrapper('gc_PlaySound', 1);
   assert(typeof wasmExports['gc_IsSoundPlaying'] != 'undefined', 'missing Wasm export: gc_IsSoundPlaying');
-  _gc_IsSoundPlaying = Module['_gc_IsSoundPlaying'] = createExportWrapper('gc_IsSoundPlaying', 1);
   assert(typeof wasmExports['gc_SetSoundVolume'] != 'undefined', 'missing Wasm export: gc_SetSoundVolume');
-  _gc_SetSoundVolume = Module['_gc_SetSoundVolume'] = createExportWrapper('gc_SetSoundVolume', 2);
   assert(typeof wasmExports['gc_SetSoundPitch'] != 'undefined', 'missing Wasm export: gc_SetSoundPitch');
-  _gc_SetSoundPitch = Module['_gc_SetSoundPitch'] = createExportWrapper('gc_SetSoundPitch', 2);
   assert(typeof wasmExports['gc_LoadMusic'] != 'undefined', 'missing Wasm export: gc_LoadMusic');
-  _gc_LoadMusic = Module['_gc_LoadMusic'] = createExportWrapper('gc_LoadMusic', 1);
   assert(typeof wasmExports['gc_UnloadMusic'] != 'undefined', 'missing Wasm export: gc_UnloadMusic');
-  _gc_UnloadMusic = Module['_gc_UnloadMusic'] = createExportWrapper('gc_UnloadMusic', 1);
   assert(typeof wasmExports['gc_PlayMusic'] != 'undefined', 'missing Wasm export: gc_PlayMusic');
-  _gc_PlayMusic = Module['_gc_PlayMusic'] = createExportWrapper('gc_PlayMusic', 1);
   assert(typeof wasmExports['gc_UpdateMusic'] != 'undefined', 'missing Wasm export: gc_UpdateMusic');
-  _gc_UpdateMusic = Module['_gc_UpdateMusic'] = createExportWrapper('gc_UpdateMusic', 1);
   assert(typeof wasmExports['gc_SetMusicPitch'] != 'undefined', 'missing Wasm export: gc_SetMusicPitch');
-  _gc_SetMusicPitch = Module['_gc_SetMusicPitch'] = createExportWrapper('gc_SetMusicPitch', 2);
   assert(typeof wasmExports['gc_SetMusicVolume'] != 'undefined', 'missing Wasm export: gc_SetMusicVolume');
-  _gc_SetMusicVolume = Module['_gc_SetMusicVolume'] = createExportWrapper('gc_SetMusicVolume', 2);
   assert(typeof wasmExports['gc_LoadFont'] != 'undefined', 'missing Wasm export: gc_LoadFont');
-  _gc_LoadFont = Module['_gc_LoadFont'] = createExportWrapper('gc_LoadFont', 1);
   assert(typeof wasmExports['gc_UnloadFont'] != 'undefined', 'missing Wasm export: gc_UnloadFont');
-  _gc_UnloadFont = Module['_gc_UnloadFont'] = createExportWrapper('gc_UnloadFont', 1);
   assert(typeof wasmExports['gc_FontSizeX'] != 'undefined', 'missing Wasm export: gc_FontSizeX');
-  _gc_FontSizeX = Module['_gc_FontSizeX'] = createExportWrapper('gc_FontSizeX', 4);
   assert(typeof wasmExports['gc_FontSizeY'] != 'undefined', 'missing Wasm export: gc_FontSizeY');
-  _gc_FontSizeY = Module['_gc_FontSizeY'] = createExportWrapper('gc_FontSizeY', 4);
   assert(typeof wasmExports['gc_LoadTexture'] != 'undefined', 'missing Wasm export: gc_LoadTexture');
-  _gc_LoadTexture = Module['_gc_LoadTexture'] = createExportWrapper('gc_LoadTexture', 1);
   assert(typeof wasmExports['gc_UnloadTexture'] != 'undefined', 'missing Wasm export: gc_UnloadTexture');
-  _gc_UnloadTexture = Module['_gc_UnloadTexture'] = createExportWrapper('gc_UnloadTexture', 1);
   assert(typeof wasmExports['gc_GetTextureWidth'] != 'undefined', 'missing Wasm export: gc_GetTextureWidth');
-  _gc_GetTextureWidth = Module['_gc_GetTextureWidth'] = createExportWrapper('gc_GetTextureWidth', 1);
   assert(typeof wasmExports['gc_GetTextureHeight'] != 'undefined', 'missing Wasm export: gc_GetTextureHeight');
-  _gc_GetTextureHeight = Module['_gc_GetTextureHeight'] = createExportWrapper('gc_GetTextureHeight', 1);
   assert(typeof wasmExports['gc_ChangeTextureWidth'] != 'undefined', 'missing Wasm export: gc_ChangeTextureWidth');
-  _gc_ChangeTextureWidth = Module['_gc_ChangeTextureWidth'] = createExportWrapper('gc_ChangeTextureWidth', 2);
   assert(typeof wasmExports['gc_ChangeTextureHeight'] != 'undefined', 'missing Wasm export: gc_ChangeTextureHeight');
-  _gc_ChangeTextureHeight = Module['_gc_ChangeTextureHeight'] = createExportWrapper('gc_ChangeTextureHeight', 2);
   assert(typeof wasmExports['gc_DisableTextureFilter'] != 'undefined', 'missing Wasm export: gc_DisableTextureFilter');
-  _gc_DisableTextureFilter = Module['_gc_DisableTextureFilter'] = createExportWrapper('gc_DisableTextureFilter', 1);
   assert(typeof wasmExports['gc_SetTargetFPS'] != 'undefined', 'missing Wasm export: gc_SetTargetFPS');
-  _gc_SetTargetFPS = Module['_gc_SetTargetFPS'] = createExportWrapper('gc_SetTargetFPS', 1);
   assert(typeof wasmExports['gc_ClearBackground'] != 'undefined', 'missing Wasm export: gc_ClearBackground');
-  _gc_ClearBackground = Module['_gc_ClearBackground'] = createExportWrapper('gc_ClearBackground', 4);
   assert(typeof wasmExports['gc_SetConfigFlags'] != 'undefined', 'missing Wasm export: gc_SetConfigFlags');
-  _gc_SetConfigFlags = Module['_gc_SetConfigFlags'] = createExportWrapper('gc_SetConfigFlags', 1);
   assert(typeof wasmExports['gc_DrawFPS'] != 'undefined', 'missing Wasm export: gc_DrawFPS');
-  _gc_DrawFPS = Module['_gc_DrawFPS'] = createExportWrapper('gc_DrawFPS', 2);
   assert(typeof wasmExports['gc_DrawText'] != 'undefined', 'missing Wasm export: gc_DrawText');
-  _gc_DrawText = Module['_gc_DrawText'] = createExportWrapper('gc_DrawText', 8);
   assert(typeof wasmExports['gc_DrawTextEx'] != 'undefined', 'missing Wasm export: gc_DrawTextEx');
-  _gc_DrawTextEx = Module['_gc_DrawTextEx'] = createExportWrapper('gc_DrawTextEx', 10);
   assert(typeof wasmExports['gc_DrawRectangleRec'] != 'undefined', 'missing Wasm export: gc_DrawRectangleRec');
-  _gc_DrawRectangleRec = Module['_gc_DrawRectangleRec'] = createExportWrapper('gc_DrawRectangleRec', 8);
   assert(typeof wasmExports['gc_DrawRectangleRounded'] != 'undefined', 'missing Wasm export: gc_DrawRectangleRounded');
-  _gc_DrawRectangleRounded = Module['_gc_DrawRectangleRounded'] = createExportWrapper('gc_DrawRectangleRounded', 10);
   assert(typeof wasmExports['gc_DrawRectanglePro'] != 'undefined', 'missing Wasm export: gc_DrawRectanglePro');
-  _gc_DrawRectanglePro = Module['_gc_DrawRectanglePro'] = createExportWrapper('gc_DrawRectanglePro', 11);
   assert(typeof wasmExports['gc_DrawRectangleLines'] != 'undefined', 'missing Wasm export: gc_DrawRectangleLines');
-  _gc_DrawRectangleLines = Module['_gc_DrawRectangleLines'] = createExportWrapper('gc_DrawRectangleLines', 8);
   assert(typeof wasmExports['gc_DrawRectangleLinesEx'] != 'undefined', 'missing Wasm export: gc_DrawRectangleLinesEx');
-  _gc_DrawRectangleLinesEx = Module['_gc_DrawRectangleLinesEx'] = createExportWrapper('gc_DrawRectangleLinesEx', 9);
   assert(typeof wasmExports['gc_DrawRectangleRoundedLines'] != 'undefined', 'missing Wasm export: gc_DrawRectangleRoundedLines');
-  _gc_DrawRectangleRoundedLines = Module['_gc_DrawRectangleRoundedLines'] = createExportWrapper('gc_DrawRectangleRoundedLines', 10);
   assert(typeof wasmExports['gc_DrawRectangleRoundedLinesEx'] != 'undefined', 'missing Wasm export: gc_DrawRectangleRoundedLinesEx');
-  _gc_DrawRectangleRoundedLinesEx = Module['_gc_DrawRectangleRoundedLinesEx'] = createExportWrapper('gc_DrawRectangleRoundedLinesEx', 11);
   assert(typeof wasmExports['gc_DrawTexture'] != 'undefined', 'missing Wasm export: gc_DrawTexture');
-  _gc_DrawTexture = Module['_gc_DrawTexture'] = createExportWrapper('gc_DrawTexture', 7);
   assert(typeof wasmExports['gc_DrawTextureRec'] != 'undefined', 'missing Wasm export: gc_DrawTextureRec');
-  _gc_DrawTextureRec = Module['_gc_DrawTextureRec'] = createExportWrapper('gc_DrawTextureRec', 11);
   assert(typeof wasmExports['gc_DrawTextureEx'] != 'undefined', 'missing Wasm export: gc_DrawTextureEx');
-  _gc_DrawTextureEx = Module['_gc_DrawTextureEx'] = createExportWrapper('gc_DrawTextureEx', 9);
   assert(typeof wasmExports['gc_DrawTexturePro'] != 'undefined', 'missing Wasm export: gc_DrawTexturePro');
-  _gc_DrawTexturePro = Module['_gc_DrawTexturePro'] = createExportWrapper('gc_DrawTexturePro', 16);
   assert(typeof wasmExports['gcFileExists'] != 'undefined', 'missing Wasm export: gcFileExists');
-  _gcFileExists = Module['_gcFileExists'] = createExportWrapper('gcFileExists', 1);
   assert(typeof wasmExports['gc_CheckCollisionRecs'] != 'undefined', 'missing Wasm export: gc_CheckCollisionRecs');
-  _gc_CheckCollisionRecs = Module['_gc_CheckCollisionRecs'] = createExportWrapper('gc_CheckCollisionRecs', 8);
   assert(typeof wasmExports['gc_CheckCollisionCircles'] != 'undefined', 'missing Wasm export: gc_CheckCollisionCircles');
-  _gc_CheckCollisionCircles = Module['_gc_CheckCollisionCircles'] = createExportWrapper('gc_CheckCollisionCircles', 6);
   assert(typeof wasmExports['gc_CheckCollisionCircleRec'] != 'undefined', 'missing Wasm export: gc_CheckCollisionCircleRec');
-  _gc_CheckCollisionCircleRec = Module['_gc_CheckCollisionCircleRec'] = createExportWrapper('gc_CheckCollisionCircleRec', 7);
   assert(typeof wasmExports['gc_CheckCollisionMousetoRec'] != 'undefined', 'missing Wasm export: gc_CheckCollisionMousetoRec');
-  _gc_CheckCollisionMousetoRec = Module['_gc_CheckCollisionMousetoRec'] = createExportWrapper('gc_CheckCollisionMousetoRec', 6);
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
-  _fflush = createExportWrapper('fflush', 1);
   assert(typeof wasmExports['ma_device__on_notification_unlocked'] != 'undefined', 'missing Wasm export: ma_device__on_notification_unlocked');
-  _ma_device__on_notification_unlocked = Module['_ma_device__on_notification_unlocked'] = createExportWrapper('ma_device__on_notification_unlocked', 1);
   assert(typeof wasmExports['ma_malloc_emscripten'] != 'undefined', 'missing Wasm export: ma_malloc_emscripten');
-  _ma_malloc_emscripten = Module['_ma_malloc_emscripten'] = createExportWrapper('ma_malloc_emscripten', 2);
   assert(typeof wasmExports['ma_free_emscripten'] != 'undefined', 'missing Wasm export: ma_free_emscripten');
-  _ma_free_emscripten = Module['_ma_free_emscripten'] = createExportWrapper('ma_free_emscripten', 2);
   assert(typeof wasmExports['ma_device_process_pcm_frames_capture__webaudio'] != 'undefined', 'missing Wasm export: ma_device_process_pcm_frames_capture__webaudio');
-  _ma_device_process_pcm_frames_capture__webaudio = Module['_ma_device_process_pcm_frames_capture__webaudio'] = createExportWrapper('ma_device_process_pcm_frames_capture__webaudio', 3);
   assert(typeof wasmExports['ma_device_process_pcm_frames_playback__webaudio'] != 'undefined', 'missing Wasm export: ma_device_process_pcm_frames_playback__webaudio');
-  _ma_device_process_pcm_frames_playback__webaudio = Module['_ma_device_process_pcm_frames_playback__webaudio'] = createExportWrapper('ma_device_process_pcm_frames_playback__webaudio', 3);
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
-  _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
-  _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
-  _strerror = createExportWrapper('strerror', 1);
   assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
-  _emscripten_stack_init = wasmExports['emscripten_stack_init'];
   assert(typeof wasmExports['emscripten_stack_get_free'] != 'undefined', 'missing Wasm export: emscripten_stack_get_free');
-  _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
   assert(typeof wasmExports['_emscripten_stack_restore'] != 'undefined', 'missing Wasm export: _emscripten_stack_restore');
-  __emscripten_stack_restore = wasmExports['_emscripten_stack_restore'];
   assert(typeof wasmExports['_emscripten_stack_alloc'] != 'undefined', 'missing Wasm export: _emscripten_stack_alloc');
-  __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
   assert(typeof wasmExports['emscripten_stack_get_current'] != 'undefined', 'missing Wasm export: emscripten_stack_get_current');
-  _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
   assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
-  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', 3);
   assert(typeof wasmExports['dynCall_viii'] != 'undefined', 'missing Wasm export: dynCall_viii');
-  dynCall_viii = dynCalls['viii'] = createExportWrapper('dynCall_viii', 4);
   assert(typeof wasmExports['dynCall_viff'] != 'undefined', 'missing Wasm export: dynCall_viff');
-  dynCall_viff = dynCalls['viff'] = createExportWrapper('dynCall_viff', 4);
   assert(typeof wasmExports['dynCall_viiiii'] != 'undefined', 'missing Wasm export: dynCall_viiiii');
-  dynCall_viiiii = dynCalls['viiiii'] = createExportWrapper('dynCall_viiiii', 6);
   assert(typeof wasmExports['dynCall_viiii'] != 'undefined', 'missing Wasm export: dynCall_viiii');
-  dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', 5);
   assert(typeof wasmExports['dynCall_vidd'] != 'undefined', 'missing Wasm export: dynCall_vidd');
-  dynCall_vidd = dynCalls['vidd'] = createExportWrapper('dynCall_vidd', 4);
   assert(typeof wasmExports['dynCall_ii'] != 'undefined', 'missing Wasm export: dynCall_ii');
-  dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', 2);
   assert(typeof wasmExports['dynCall_iiii'] != 'undefined', 'missing Wasm export: dynCall_iiii');
-  dynCall_iiii = dynCalls['iiii'] = createExportWrapper('dynCall_iiii', 4);
   assert(typeof wasmExports['dynCall_iiiiii'] != 'undefined', 'missing Wasm export: dynCall_iiiiii');
-  dynCall_iiiiii = dynCalls['iiiiii'] = createExportWrapper('dynCall_iiiiii', 6);
   assert(typeof wasmExports['dynCall_viiiiii'] != 'undefined', 'missing Wasm export: dynCall_viiiiii');
-  dynCall_viiiiii = dynCalls['viiiiii'] = createExportWrapper('dynCall_viiiiii', 7);
   assert(typeof wasmExports['dynCall_fffi'] != 'undefined', 'missing Wasm export: dynCall_fffi');
-  dynCall_fffi = dynCalls['fffi'] = createExportWrapper('dynCall_fffi', 4);
   assert(typeof wasmExports['dynCall_ffi'] != 'undefined', 'missing Wasm export: dynCall_ffi');
-  dynCall_ffi = dynCalls['ffi'] = createExportWrapper('dynCall_ffi', 3);
   assert(typeof wasmExports['dynCall_iii'] != 'undefined', 'missing Wasm export: dynCall_iii');
-  dynCall_iii = dynCalls['iii'] = createExportWrapper('dynCall_iii', 3);
   assert(typeof wasmExports['dynCall_iiiii'] != 'undefined', 'missing Wasm export: dynCall_iiiii');
-  dynCall_iiiii = dynCalls['iiiii'] = createExportWrapper('dynCall_iiiii', 5);
   assert(typeof wasmExports['dynCall_iiiji'] != 'undefined', 'missing Wasm export: dynCall_iiiji');
-  dynCall_iiiji = dynCalls['iiiji'] = createExportWrapper('dynCall_iiiji', 5);
   assert(typeof wasmExports['dynCall_iiiiiii'] != 'undefined', 'missing Wasm export: dynCall_iiiiiii');
-  dynCall_iiiiiii = dynCalls['iiiiiii'] = createExportWrapper('dynCall_iiiiiii', 7);
   assert(typeof wasmExports['dynCall_jii'] != 'undefined', 'missing Wasm export: dynCall_jii');
-  dynCall_jii = dynCalls['jii'] = createExportWrapper('dynCall_jii', 3);
   assert(typeof wasmExports['dynCall_vi'] != 'undefined', 'missing Wasm export: dynCall_vi');
-  dynCall_vi = dynCalls['vi'] = createExportWrapper('dynCall_vi', 2);
   assert(typeof wasmExports['dynCall_vffff'] != 'undefined', 'missing Wasm export: dynCall_vffff');
-  dynCall_vffff = dynCalls['vffff'] = createExportWrapper('dynCall_vffff', 5);
   assert(typeof wasmExports['dynCall_vf'] != 'undefined', 'missing Wasm export: dynCall_vf');
-  dynCall_vf = dynCalls['vf'] = createExportWrapper('dynCall_vf', 2);
   assert(typeof wasmExports['dynCall_viiiiiiii'] != 'undefined', 'missing Wasm export: dynCall_viiiiiiii');
-  dynCall_viiiiiiii = dynCalls['viiiiiiii'] = createExportWrapper('dynCall_viiiiiiii', 9);
   assert(typeof wasmExports['dynCall_viiiiiiiii'] != 'undefined', 'missing Wasm export: dynCall_viiiiiiiii');
-  dynCall_viiiiiiiii = dynCalls['viiiiiiiii'] = createExportWrapper('dynCall_viiiiiiiii', 10);
   assert(typeof wasmExports['dynCall_i'] != 'undefined', 'missing Wasm export: dynCall_i');
-  dynCall_i = dynCalls['i'] = createExportWrapper('dynCall_i', 1);
   assert(typeof wasmExports['dynCall_vff'] != 'undefined', 'missing Wasm export: dynCall_vff');
-  dynCall_vff = dynCalls['vff'] = createExportWrapper('dynCall_vff', 3);
   assert(typeof wasmExports['dynCall_v'] != 'undefined', 'missing Wasm export: dynCall_v');
-  dynCall_v = dynCalls['v'] = createExportWrapper('dynCall_v', 1);
   assert(typeof wasmExports['dynCall_viiiiiii'] != 'undefined', 'missing Wasm export: dynCall_viiiiiii');
-  dynCall_viiiiiii = dynCalls['viiiiiii'] = createExportWrapper('dynCall_viiiiiii', 8);
   assert(typeof wasmExports['dynCall_vfi'] != 'undefined', 'missing Wasm export: dynCall_vfi');
-  dynCall_vfi = dynCalls['vfi'] = createExportWrapper('dynCall_vfi', 3);
   assert(typeof wasmExports['dynCall_viif'] != 'undefined', 'missing Wasm export: dynCall_viif');
-  dynCall_viif = dynCalls['viif'] = createExportWrapper('dynCall_viif', 4);
   assert(typeof wasmExports['dynCall_vif'] != 'undefined', 'missing Wasm export: dynCall_vif');
-  dynCall_vif = dynCalls['vif'] = createExportWrapper('dynCall_vif', 3);
   assert(typeof wasmExports['dynCall_vifff'] != 'undefined', 'missing Wasm export: dynCall_vifff');
-  dynCall_vifff = dynCalls['vifff'] = createExportWrapper('dynCall_vifff', 5);
   assert(typeof wasmExports['dynCall_viffff'] != 'undefined', 'missing Wasm export: dynCall_viffff');
-  dynCall_viffff = dynCalls['viffff'] = createExportWrapper('dynCall_viffff', 6);
   assert(typeof wasmExports['dynCall_vfff'] != 'undefined', 'missing Wasm export: dynCall_vfff');
-  dynCall_vfff = dynCalls['vfff'] = createExportWrapper('dynCall_vfff', 4);
   assert(typeof wasmExports['dynCall_jiji'] != 'undefined', 'missing Wasm export: dynCall_jiji');
-  dynCall_jiji = dynCalls['jiji'] = createExportWrapper('dynCall_jiji', 4);
   assert(typeof wasmExports['dynCall_iidiiii'] != 'undefined', 'missing Wasm export: dynCall_iidiiii');
-  dynCall_iidiiii = dynCalls['iidiiii'] = createExportWrapper('dynCall_iidiiii', 7);
   assert(typeof wasmExports['asyncify_start_unwind'] != 'undefined', 'missing Wasm export: asyncify_start_unwind');
-  _asyncify_start_unwind = createExportWrapper('asyncify_start_unwind', 1);
   assert(typeof wasmExports['asyncify_stop_unwind'] != 'undefined', 'missing Wasm export: asyncify_stop_unwind');
-  _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind', 0);
   assert(typeof wasmExports['asyncify_start_rewind'] != 'undefined', 'missing Wasm export: asyncify_start_rewind');
-  _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind', 1);
   assert(typeof wasmExports['asyncify_stop_rewind'] != 'undefined', 'missing Wasm export: asyncify_stop_rewind');
-  _asyncify_stop_rewind = createExportWrapper('asyncify_stop_rewind', 0);
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
-  memory = wasmMemory = wasmExports['memory'];
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
+  _add = Module['_add'] = createExportWrapper('add', 2);
+  _gc_GetRandomNumber = Module['_gc_GetRandomNumber'] = createExportWrapper('gc_GetRandomNumber', 2);
+  _gc_GetFrameTime = Module['_gc_GetFrameTime'] = createExportWrapper('gc_GetFrameTime', 0);
+  _gc_InitWindow = Module['_gc_InitWindow'] = createExportWrapper('gc_InitWindow', 3);
+  _gc_WindowShouldClose = Module['_gc_WindowShouldClose'] = createExportWrapper('gc_WindowShouldClose', 0);
+  _gc_CloseWindow = Module['_gc_CloseWindow'] = createExportWrapper('gc_CloseWindow', 0);
+  _gc_InitAudioDevice = Module['_gc_InitAudioDevice'] = createExportWrapper('gc_InitAudioDevice', 0);
+  _gc_CloseAudioDevice = Module['_gc_CloseAudioDevice'] = createExportWrapper('gc_CloseAudioDevice', 0);
+  _gc_BeginDrawing = Module['_gc_BeginDrawing'] = createExportWrapper('gc_BeginDrawing', 0);
+  _gc_EndDrawing = Module['_gc_EndDrawing'] = createExportWrapper('gc_EndDrawing', 0);
+  _gc_IsKeyPressed = Module['_gc_IsKeyPressed'] = createExportWrapper('gc_IsKeyPressed', 1);
+  _gc_IsKeyReleased = Module['_gc_IsKeyReleased'] = createExportWrapper('gc_IsKeyReleased', 1);
+  _gc_IsKeyUp = Module['_gc_IsKeyUp'] = createExportWrapper('gc_IsKeyUp', 1);
+  _gc_IsKeyDown = Module['_gc_IsKeyDown'] = createExportWrapper('gc_IsKeyDown', 1);
+  _gc_IsMouseButtonPressed = Module['_gc_IsMouseButtonPressed'] = createExportWrapper('gc_IsMouseButtonPressed', 1);
+  _gc_IsMouseButtonReleased = Module['_gc_IsMouseButtonReleased'] = createExportWrapper('gc_IsMouseButtonReleased', 1);
+  _gc_IsMouseButtonUp = Module['_gc_IsMouseButtonUp'] = createExportWrapper('gc_IsMouseButtonUp', 1);
+  _gc_IsMouseButtonDown = Module['_gc_IsMouseButtonDown'] = createExportWrapper('gc_IsMouseButtonDown', 1);
+  _gc_GetMousePositionX = Module['_gc_GetMousePositionX'] = createExportWrapper('gc_GetMousePositionX', 0);
+  _gc_GetMousePositionY = Module['_gc_GetMousePositionY'] = createExportWrapper('gc_GetMousePositionY', 0);
+  _gc_SetMousePosition = Module['_gc_SetMousePosition'] = createExportWrapper('gc_SetMousePosition', 2);
+  _gc_ShowCursor = Module['_gc_ShowCursor'] = createExportWrapper('gc_ShowCursor', 0);
+  _gc_HideCursor = Module['_gc_HideCursor'] = createExportWrapper('gc_HideCursor', 0);
+  _gc_IsCursorHidden = Module['_gc_IsCursorHidden'] = createExportWrapper('gc_IsCursorHidden', 0);
+  _gc_EnableCursor = Module['_gc_EnableCursor'] = createExportWrapper('gc_EnableCursor', 0);
+  _gc_DisableCursor = Module['_gc_DisableCursor'] = createExportWrapper('gc_DisableCursor', 0);
+  _gc_IsCursorOnScreen = Module['_gc_IsCursorOnScreen'] = createExportWrapper('gc_IsCursorOnScreen', 0);
+  _gc_CreateCamera = Module['_gc_CreateCamera'] = createExportWrapper('gc_CreateCamera', 6);
+  _malloc = createExportWrapper('malloc', 1);
+  _gc_MoveCamera2DX = Module['_gc_MoveCamera2DX'] = createExportWrapper('gc_MoveCamera2DX', 2);
+  _gc_MoveCamera2DY = Module['_gc_MoveCamera2DY'] = createExportWrapper('gc_MoveCamera2DY', 2);
+  _gc_UnloadCamera = Module['_gc_UnloadCamera'] = createExportWrapper('gc_UnloadCamera', 1);
+  _free = createExportWrapper('free', 1);
+  _gc_BeginMode2D = Module['_gc_BeginMode2D'] = createExportWrapper('gc_BeginMode2D', 1);
+  _gc_EndMode2D = Module['_gc_EndMode2D'] = createExportWrapper('gc_EndMode2D', 0);
+  _gc_LoadSound = Module['_gc_LoadSound'] = createExportWrapper('gc_LoadSound', 1);
+  _gc_UnloadSound = Module['_gc_UnloadSound'] = createExportWrapper('gc_UnloadSound', 1);
+  _gc_PlaySound = Module['_gc_PlaySound'] = createExportWrapper('gc_PlaySound', 1);
+  _gc_IsSoundPlaying = Module['_gc_IsSoundPlaying'] = createExportWrapper('gc_IsSoundPlaying', 1);
+  _gc_SetSoundVolume = Module['_gc_SetSoundVolume'] = createExportWrapper('gc_SetSoundVolume', 2);
+  _gc_SetSoundPitch = Module['_gc_SetSoundPitch'] = createExportWrapper('gc_SetSoundPitch', 2);
+  _gc_LoadMusic = Module['_gc_LoadMusic'] = createExportWrapper('gc_LoadMusic', 1);
+  _gc_UnloadMusic = Module['_gc_UnloadMusic'] = createExportWrapper('gc_UnloadMusic', 1);
+  _gc_PlayMusic = Module['_gc_PlayMusic'] = createExportWrapper('gc_PlayMusic', 1);
+  _gc_UpdateMusic = Module['_gc_UpdateMusic'] = createExportWrapper('gc_UpdateMusic', 1);
+  _gc_SetMusicPitch = Module['_gc_SetMusicPitch'] = createExportWrapper('gc_SetMusicPitch', 2);
+  _gc_SetMusicVolume = Module['_gc_SetMusicVolume'] = createExportWrapper('gc_SetMusicVolume', 2);
+  _gc_LoadFont = Module['_gc_LoadFont'] = createExportWrapper('gc_LoadFont', 1);
+  _gc_UnloadFont = Module['_gc_UnloadFont'] = createExportWrapper('gc_UnloadFont', 1);
+  _gc_FontSizeX = Module['_gc_FontSizeX'] = createExportWrapper('gc_FontSizeX', 4);
+  _gc_FontSizeY = Module['_gc_FontSizeY'] = createExportWrapper('gc_FontSizeY', 4);
+  _gc_LoadTexture = Module['_gc_LoadTexture'] = createExportWrapper('gc_LoadTexture', 1);
+  _gc_UnloadTexture = Module['_gc_UnloadTexture'] = createExportWrapper('gc_UnloadTexture', 1);
+  _gc_GetTextureWidth = Module['_gc_GetTextureWidth'] = createExportWrapper('gc_GetTextureWidth', 1);
+  _gc_GetTextureHeight = Module['_gc_GetTextureHeight'] = createExportWrapper('gc_GetTextureHeight', 1);
+  _gc_ChangeTextureWidth = Module['_gc_ChangeTextureWidth'] = createExportWrapper('gc_ChangeTextureWidth', 2);
+  _gc_ChangeTextureHeight = Module['_gc_ChangeTextureHeight'] = createExportWrapper('gc_ChangeTextureHeight', 2);
+  _gc_DisableTextureFilter = Module['_gc_DisableTextureFilter'] = createExportWrapper('gc_DisableTextureFilter', 1);
+  _gc_SetTargetFPS = Module['_gc_SetTargetFPS'] = createExportWrapper('gc_SetTargetFPS', 1);
+  _gc_ClearBackground = Module['_gc_ClearBackground'] = createExportWrapper('gc_ClearBackground', 4);
+  _gc_SetConfigFlags = Module['_gc_SetConfigFlags'] = createExportWrapper('gc_SetConfigFlags', 1);
+  _gc_DrawFPS = Module['_gc_DrawFPS'] = createExportWrapper('gc_DrawFPS', 2);
+  _gc_DrawText = Module['_gc_DrawText'] = createExportWrapper('gc_DrawText', 8);
+  _gc_DrawTextEx = Module['_gc_DrawTextEx'] = createExportWrapper('gc_DrawTextEx', 10);
+  _gc_DrawRectangleRec = Module['_gc_DrawRectangleRec'] = createExportWrapper('gc_DrawRectangleRec', 8);
+  _gc_DrawRectangleRounded = Module['_gc_DrawRectangleRounded'] = createExportWrapper('gc_DrawRectangleRounded', 10);
+  _gc_DrawRectanglePro = Module['_gc_DrawRectanglePro'] = createExportWrapper('gc_DrawRectanglePro', 11);
+  _gc_DrawRectangleLines = Module['_gc_DrawRectangleLines'] = createExportWrapper('gc_DrawRectangleLines', 8);
+  _gc_DrawRectangleLinesEx = Module['_gc_DrawRectangleLinesEx'] = createExportWrapper('gc_DrawRectangleLinesEx', 9);
+  _gc_DrawRectangleRoundedLines = Module['_gc_DrawRectangleRoundedLines'] = createExportWrapper('gc_DrawRectangleRoundedLines', 10);
+  _gc_DrawRectangleRoundedLinesEx = Module['_gc_DrawRectangleRoundedLinesEx'] = createExportWrapper('gc_DrawRectangleRoundedLinesEx', 11);
+  _gc_DrawTexture = Module['_gc_DrawTexture'] = createExportWrapper('gc_DrawTexture', 7);
+  _gc_DrawTextureRec = Module['_gc_DrawTextureRec'] = createExportWrapper('gc_DrawTextureRec', 11);
+  _gc_DrawTextureEx = Module['_gc_DrawTextureEx'] = createExportWrapper('gc_DrawTextureEx', 9);
+  _gc_DrawTexturePro = Module['_gc_DrawTexturePro'] = createExportWrapper('gc_DrawTexturePro', 16);
+  _gcFileExists = Module['_gcFileExists'] = createExportWrapper('gcFileExists', 1);
+  _gc_CheckCollisionRecs = Module['_gc_CheckCollisionRecs'] = createExportWrapper('gc_CheckCollisionRecs', 8);
+  _gc_CheckCollisionCircles = Module['_gc_CheckCollisionCircles'] = createExportWrapper('gc_CheckCollisionCircles', 6);
+  _gc_CheckCollisionCircleRec = Module['_gc_CheckCollisionCircleRec'] = createExportWrapper('gc_CheckCollisionCircleRec', 7);
+  _gc_CheckCollisionMousetoRec = Module['_gc_CheckCollisionMousetoRec'] = createExportWrapper('gc_CheckCollisionMousetoRec', 6);
+  _fflush = createExportWrapper('fflush', 1);
+  _ma_device__on_notification_unlocked = Module['_ma_device__on_notification_unlocked'] = createExportWrapper('ma_device__on_notification_unlocked', 1);
+  _ma_malloc_emscripten = Module['_ma_malloc_emscripten'] = createExportWrapper('ma_malloc_emscripten', 2);
+  _ma_free_emscripten = Module['_ma_free_emscripten'] = createExportWrapper('ma_free_emscripten', 2);
+  _ma_device_process_pcm_frames_capture__webaudio = Module['_ma_device_process_pcm_frames_capture__webaudio'] = createExportWrapper('ma_device_process_pcm_frames_capture__webaudio', 3);
+  _ma_device_process_pcm_frames_playback__webaudio = Module['_ma_device_process_pcm_frames_playback__webaudio'] = createExportWrapper('ma_device_process_pcm_frames_playback__webaudio', 3);
+  _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
+  _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
+  _strerror = createExportWrapper('strerror', 1);
+  _emscripten_stack_init = wasmExports['emscripten_stack_init'];
+  _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
+  __emscripten_stack_restore = wasmExports['_emscripten_stack_restore'];
+  __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
+  _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
+  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', 3);
+  dynCall_viii = dynCalls['viii'] = createExportWrapper('dynCall_viii', 4);
+  dynCall_viff = dynCalls['viff'] = createExportWrapper('dynCall_viff', 4);
+  dynCall_viiiii = dynCalls['viiiii'] = createExportWrapper('dynCall_viiiii', 6);
+  dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', 5);
+  dynCall_vidd = dynCalls['vidd'] = createExportWrapper('dynCall_vidd', 4);
+  dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', 2);
+  dynCall_iiii = dynCalls['iiii'] = createExportWrapper('dynCall_iiii', 4);
+  dynCall_iiiiii = dynCalls['iiiiii'] = createExportWrapper('dynCall_iiiiii', 6);
+  dynCall_viiiiii = dynCalls['viiiiii'] = createExportWrapper('dynCall_viiiiii', 7);
+  dynCall_fffi = dynCalls['fffi'] = createExportWrapper('dynCall_fffi', 4);
+  dynCall_ffi = dynCalls['ffi'] = createExportWrapper('dynCall_ffi', 3);
+  dynCall_iii = dynCalls['iii'] = createExportWrapper('dynCall_iii', 3);
+  dynCall_iiiii = dynCalls['iiiii'] = createExportWrapper('dynCall_iiiii', 5);
+  dynCall_iiiji = dynCalls['iiiji'] = createExportWrapper('dynCall_iiiji', 5);
+  dynCall_iiiiiii = dynCalls['iiiiiii'] = createExportWrapper('dynCall_iiiiiii', 7);
+  dynCall_jii = dynCalls['jii'] = createExportWrapper('dynCall_jii', 3);
+  dynCall_vi = dynCalls['vi'] = createExportWrapper('dynCall_vi', 2);
+  dynCall_vffff = dynCalls['vffff'] = createExportWrapper('dynCall_vffff', 5);
+  dynCall_vf = dynCalls['vf'] = createExportWrapper('dynCall_vf', 2);
+  dynCall_viiiiiiii = dynCalls['viiiiiiii'] = createExportWrapper('dynCall_viiiiiiii', 9);
+  dynCall_viiiiiiiii = dynCalls['viiiiiiiii'] = createExportWrapper('dynCall_viiiiiiiii', 10);
+  dynCall_i = dynCalls['i'] = createExportWrapper('dynCall_i', 1);
+  dynCall_vff = dynCalls['vff'] = createExportWrapper('dynCall_vff', 3);
+  dynCall_v = dynCalls['v'] = createExportWrapper('dynCall_v', 1);
+  dynCall_viiiiiii = dynCalls['viiiiiii'] = createExportWrapper('dynCall_viiiiiii', 8);
+  dynCall_vfi = dynCalls['vfi'] = createExportWrapper('dynCall_vfi', 3);
+  dynCall_viif = dynCalls['viif'] = createExportWrapper('dynCall_viif', 4);
+  dynCall_vif = dynCalls['vif'] = createExportWrapper('dynCall_vif', 3);
+  dynCall_vifff = dynCalls['vifff'] = createExportWrapper('dynCall_vifff', 5);
+  dynCall_viffff = dynCalls['viffff'] = createExportWrapper('dynCall_viffff', 6);
+  dynCall_vfff = dynCalls['vfff'] = createExportWrapper('dynCall_vfff', 4);
+  dynCall_jiji = dynCalls['jiji'] = createExportWrapper('dynCall_jiji', 4);
+  dynCall_iidiiii = dynCalls['iidiiii'] = createExportWrapper('dynCall_iidiiii', 7);
+  _asyncify_start_unwind = createExportWrapper('asyncify_start_unwind', 1);
+  _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind', 0);
+  _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind', 1);
+  _asyncify_stop_rewind = createExportWrapper('asyncify_stop_rewind', 0);
+  memory = wasmMemory = wasmExports['memory'];
   __indirect_function_table = wasmExports['__indirect_function_table'];
 }
 
 var wasmImports = {
   /** @export */
-  GetCanvasIdJs,
+  SetCanvasIdJs,
   /** @export */
   __assert_fail: ___assert_fail,
   /** @export */
@@ -10694,7 +10743,7 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
     _fflush(0);
     // also flush in the JS FS layer
-    ['stdout', 'stderr'].forEach((name) => {
+    for (var name of ['stdout', 'stderr']) {
       var info = FS.analyzePath('/dev/' + name);
       if (!info) return;
       var stream = info.object;
@@ -10703,7 +10752,7 @@ function checkUnflushedContent() {
       if (tty?.output?.length) {
         has = true;
       }
-    });
+    }
   } catch(e) {}
   out = oldOut;
   err = oldErr;

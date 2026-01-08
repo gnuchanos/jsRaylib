@@ -4,6 +4,7 @@
 # git clone https://github.com/raysan5/raylib.git
 # cd raylib/src/
 # make PLATFORM=PLATFORM_DESKTOP
+# make PLATFORM=PLATFORM_WEB
 
 # second you need for web export
 #git clone https://github.com/emscripten-core/emsdk.git

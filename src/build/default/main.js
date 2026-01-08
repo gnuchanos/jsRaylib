@@ -68,12 +68,14 @@ async function main() {
 			console.log('Interstitial state: ', state);
 			
 			if (state === "opened") {
-				gcLib.SetTargetFPS(1);
+				DATA.Settings.MusicON = false;
 				AdTRUE = true;
+				gcLib.SetTargetFPS(1);
 				console.log("---| AD Opend!");
 			} else if (state === "closed" || state === "failed") {
 				gcLib.SetTargetFPS(60);
 				AdTRUE = false;
+				DATA.Settings.MusicON = true;
 				if (state != "failed") {
 					DATA.Money += 100;
 				}
@@ -129,6 +131,10 @@ async function main() {
 		"resources/Sound/hitSound.wav",
 		"resources/Sound/point.wav",
 
+		"resources/Images/UI/SoundOpen_Normal.png",
+		"resources/Images/UI/SoundOpen_Hover.png",
+		"resources/Images/UI/SoundOpen_Pressed.png",
+
 	];
 
 	// This Is Index for Simple Call Asset Path
@@ -142,7 +148,9 @@ async function main() {
 		_Music    : 2,
 		_HitSound : 3,
 		_Point    : 4,
-
+		_Normal   : 5,
+		_Hover    : 6,
+		_Pressed  : 7,
 
 
 	};
@@ -166,7 +174,12 @@ async function main() {
 	gcLib.ChangeTextureHeight(LogoBoot, ScreenHeight);
 	gcLib.ChangeTextureWidth(LogoBoot, ScreenWidth);
 	let LogoBootTimer = 5;
-	let LoadingForBoot = new gcLib.ProgressBar(LogoBootTimer, ScreenWidth/2-(ScreenWidth/2/2), 10, ScreenWidth/2, 60, gcLib.Colors.Purple3, gcLib.Colors.Purple5);
+	let LoadingForBoot = new gcLib.ProgressBar(
+		LogoBootTimer, 
+		gcLib.Vector2(ScreenWidth/2-(ScreenWidth/2/2), 10), 
+		gcLib.Vector2(ScreenWidth/2, 60), 
+		gcLib.Colors.Purple3, gcLib.Colors.Purple5
+	);
 
 	// Menu Screen
 
@@ -174,21 +187,30 @@ async function main() {
 
 
 
+	const LOGO = new gcLib.ImageButton(
+		gcLib.CreateRectangle(100, 600, 100, 100),
+		AssetList[AssetListIndex._Normal],
+		AssetList[AssetListIndex._Hover],
+		AssetList[AssetListIndex._Pressed],
+		gcLib.RGBA(255, 255, 255, 255)
+	);
+
+
+
 
 	class MainMenu {
 		constructor(DefaultFont, ScreenWidth, ScreenHeight) {
 			this.StartGameButton = new gcLib.Button (
-				"Start Game", 100, 100, DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
+				"Start Game", gcLib.Vector2(100, 100), DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
 			);
 
 			this.ADButton = new gcLib.Button (
-				"Ad Reword", 100, this.StartGameButton.ButtonSize.y + this.StartGameButton.ButtonSize.height + 30, 
+				"Ad Reword", gcLib.Vector2(100, this.StartGameButton.ButtonSize.y + this.StartGameButton.ButtonSize.height + 30), 
 				DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
 			);
 
 			this.JsRaylibGithubButton = new gcLib.Button (
-				"JsRaylib Github", 100,
-				this.ADButton.ButtonSize.y + this.ADButton.ButtonSize.height + 30,
+				"JsRaylib Github", gcLib.Vector2(100, this.ADButton.ButtonSize.y + this.ADButton.ButtonSize.height + 30),
 				DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
 			);
 
@@ -208,7 +230,7 @@ async function main() {
 		}
 
 		Render() {
-			gcLib.DrawRecRounded(0.2, 3, this.ButtonsBackground, gcLib.Colors.Purple0);
+			gcLib.DrawRecRounded(this.ButtonsBackground, 0.2, 3, gcLib.Colors.Purple0);
 			this.StartGameButton.Draw();
 			this.ADButton.Draw();
 			this.JsRaylibGithubButton.Draw();
@@ -225,10 +247,11 @@ async function main() {
 			}
 
 			if (this.ADButton.Update()) {
-				showAd();
+				showAd().then(() => {
+					console.log("Ad FAIL we gonna DIE i'm soo hungy");
+				});
 			}
 		}
-
 
 	}
 
@@ -250,8 +273,16 @@ async function main() {
 	testMusicList.ReadyMusic();
 	testMusicList.SetMusicVolume();
 
-
-
+	let numb = 10;
+	const testB = new gcLib.Counter(
+		100,
+		DefaultFont, 160, gcLib.Vector2(400, 600),
+		gcLib.Colors.Purple0,
+		gcLib.Colors.Purple2,
+		gcLib.Colors.Purple4,
+		gcLib.Colors.Purple6,
+		gcLib.Colors.Purple7
+	);
 
 
 
@@ -271,17 +302,15 @@ async function main() {
 
 	// Reduce FPS when page is not focused
 	window.addEventListener("blur", () => {
-		DATA.Settings.MusicON = false;
-		
 		if (AdTRUE) {
+			DATA.Settings.MusicON = false;
 			gcLib.SetTargetFPS(5); // game unfocused, slow down
 		}
 	});
 
 	window.addEventListener("focus", () => {
-		DATA.Settings.MusicON = true;
-
-		if (AdTRUE) {
+		if (!AdTRUE) {
+			DATA.Settings.MusicON = true;	
 			gcLib.SetTargetFPS(60); // restore normal fps
 		}
 	});
@@ -306,10 +335,18 @@ async function main() {
 				} else if (CurrentScene.Scene == GameScene.Menu) {
 					_MainMenu.Update(CurrentScene);
 
-					testMusicList.PlayMusic(DATA);
+					testMusicList.PlayMusic(DATA.Settings.MusicON);
 					if (gcLib.IsKeyPressed(gcLib.Keyboard.KEY_A)) {
 						testMusicList.NextMusic();
 					}
+
+					if (LOGO.Update()) {
+						if (gcLib.IsButtonPressed(gcLib.MouseButton.LEFT)) {
+							DATA.Settings.MusicON = DATA.Settings.MusicON ? false : true;
+						}
+					}
+
+					testB.Update(numb);
 
 				} else if (CurrentScene.Scene == GameScene.GamePlay) {
 
@@ -333,6 +370,9 @@ async function main() {
 
 					} else if (CurrentScene.Scene == GameScene.Menu) {
 						_MainMenu.Render();
+						LOGO.Draw();
+						testB.Draw();
+
 
 					} else if (CurrentScene.Scene == GameScene.GamePlay) {
 

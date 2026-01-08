@@ -85,7 +85,7 @@ export default async function initGcLib() {
     const getRandomInt = gcLib.cwrap("gc_GetRandomNumber", "number", ["number", "number"]);
 
 	// Raylib
-    const FileExists = gcLib.cwrap("gcFileExists", "boolean", ["string"]);
+    const FileExists = gcLib.cwrap("gcFileExists", "boolean", ["string"]); // i never testing this webasambly file system problem
     
     // Raylib Window
     const InitWindow = gcLib.cwrap("gc_InitWindow", "void", ["number", "number", "string"]);
@@ -536,6 +536,18 @@ export default async function initGcLib() {
 		UpdateMusicRaw(Music);
 	}
 
+	function SetMusicVolume(Music, Volume) {
+		if (arguments.length < 1 || Music === null) {
+			console.error("Missing Key: Missing Music");
+		}
+
+		if (arguments.length < 2 || Volume === null) {
+			console.error("Missing Key: Missing Volume");
+		}
+
+		SetMusicVolumeRaw(Music, Volume);
+	}
+
 	function SetMusicPitch(Music, Pitch) {
 		if (arguments.length < 1 || Music === null) {
 			console.error("Missing Key: Missing Music");
@@ -561,13 +573,13 @@ export default async function initGcLib() {
 
 		SetMusicVolume() {
 			for (let i = 0; i < this.MusicList.length; i++) {
-				SetMusicVolumeRaw(this.MusicList[this.CurrentIndex], this.Volume);
+				SetMusicVolume(this.MusicList[this.CurrentIndex], this.Volume);
 			}
 		}
 
 		PlayMusic(DATA) {
 			if (DATA != null) {
-				if (DATA.Settings.MusicON) {
+				if (DATA) {
 					PlayMusic(this.MusicList[this.CurrentIndex]);
 				}
 			} else {
@@ -832,19 +844,19 @@ export default async function initGcLib() {
 		);
 	}
 
-	function DrawRecRounded(Roundness, Segments, Rec, RGBA) {
-		if (arguments.length < 1 || Roundness === null) {
+	function DrawRecRounded(Rec, Roundness, Segments, RGBA) {
+		if (arguments.length < 1 || Rec === null) {
+			console.error("Missing Key: Rec parameter is null or undefined.");
+			return false;
+		}
+
+		if (arguments.length < 2 || Roundness === null) {
 			console.error("Missing Key: Roundness parameter is null or undefined.");
 			return false;
 		}
 
-		if (arguments.length < 2 || Segments === null) {
+		if (arguments.length < 3 || Segments === null) {
 			console.error("Missing Key: Segments parameter is null or undefined.");
-			return false;
-		}
-
-		if (arguments.length < 3 || Rec === null) {
-			console.error("Missing Key: Rec parameter is null or undefined.");
 			return false;
 		}
 
@@ -854,7 +866,7 @@ export default async function initGcLib() {
 		}
 
 		if (Roundness > 1) {
-			console.log("Roundness maximum is 1 not: ", Roundness);
+			console.error("Roundness maximum is 1 not: ", Roundness);
 		}
 
 		DrawRectangleRoundedRaw(
@@ -864,19 +876,19 @@ export default async function initGcLib() {
 		);
 	}
 
-	function DrawRecPro(Origin, Rotation, Rec, RGBA) {
-		if (arguments.length < 1 || Origin === null) {
+	function DrawRecPro(Rec, Origin, Rotation, RGBA) {
+		if (arguments.length < 1 || Rec === null) {
+			console.error("Missing Key: Rec parameter is null or undefined.");
+			return false;
+		}
+
+		if (arguments.length < 2 || Origin === null) {
 			console.error("Missing Key: Origin parameter is null or undefined.");
 			return false;
 		}
 
-		if (arguments.length < 2 || Rotation === null) {
+		if (arguments.length < 3 || Rotation === null) {
 			console.error("Missing Key: Rotation parameter is null or undefined.");
-			return false;
-		}
-
-		if (arguments.length < 3 || Rec === null) {
-			console.error("Missing Key: Rec parameter is null or undefined.");
 			return false;
 		}
 
@@ -909,14 +921,14 @@ export default async function initGcLib() {
 			);
 		}
 
-	function DrawRecLinesEx(lineThick, Rec, RGBA) {
-		if (arguments.length < 1 || lineThick === null) {
-			console.error("Missing Key: lineThick parameter is null or undefined.");
+	function DrawRecLinesEx(Rec, lineThickness, RGBA) {
+		if (arguments.length < 1 || Rec === null) {
+			console.error("Missing Key: Rec parameter is null or undefined.");
 			return false;
 		}
 
-		if (arguments.length < 2 || Rec === null) {
-			console.error("Missing Key: Rec parameter is null or undefined.");
+		if (arguments.length < 2 || LineThickness === null) {
+			console.error("Missing Key: LineThickness parameter is null or undefined.");
 			return false;
 		}
 
@@ -927,23 +939,27 @@ export default async function initGcLib() {
 
 		DrawRectangleLinesExRaw(
 				Rec.x, Rec.y, Rec.width, Rec.height,
-				lineThick,
+				lineThickness,
 				RGBA.r, RGBA.g, RGBA.b, RGBA.a
 			);
 		}
 
-	function DrawRecRoundedLines(Roundness, Segments, Rec, RGBA) {
-		if (arguments.length < 1 || Roundness === null) {
+	function DrawRecRoundedLines(Rec, Roundness, Segments, RGBA) {
+		if (arguments.length < 1 || Rec === null) {
+			console.error("Missing Key: Rec parameter is null or undefined.");
+			return false;
+		}
+
+		if (arguments.length < 2 || Roundness === null) {
 			console.error("Missing Key: Roundness parameter is null or undefined.");
 			return false;
 		}
 
-		if (arguments.length < 2 || Segments === null) {
-			console.error("Missing Key: Segments parameter is null or undefined.");
-			return false;
+		if (arguments.length < 3 || Segments === null) {
+			console.error("Missing Key: Segments parameter is null or undefined");
 		}
 
-		if (arguments.length < 3 || RGBA === null) {
+		if (arguments.length < 4 || RGBA === null) {
 			console.error("Missing Key: RGBA parameter is null or undefined.");
 			return false;
 		}
@@ -955,24 +971,24 @@ export default async function initGcLib() {
 		);
 	}
 
-	function DrawRecRoundedLinesEx(Roundness, Segments, lineThick, Rec, RGBA) {
-		if (arguments.length < 1 || Roundness === null) {
+	function DrawRecRoundedLinesEx(Rec, Roundness, Segments, lineThickness, RGBA) {
+		if (arguments.length < 1 || Rec === null) {
+			console.error("Missing Key: Rec parameter is null or undefined.");
+			return false;
+		}
+
+		if (arguments.length < 2 || Roundness === null) {
 			console.error("Missing Key: Roundness parameter is null or undefined.");
 			return false;
 		}
 
-		if (arguments.length < 2 || Segments === null) {
+		if (arguments.length < 3 || Segments === null) {
 			console.error("Missing Key: Segments parameter is null or undefined.");
 			return false;
 		}
 
-		if (arguments.length < 3 || lineThick === null) {
+		if (arguments.length < 4 || lineThickness === null) {
 			console.error("Missing Key: lineThick parameter is null or undefined.");
-			return false;
-		}
-
-		if (arguments.length < 4 || Rec === null) {
-			console.error("Missing Key: Rec parameter is null or undefined.");
 			return false;
 		}
 
@@ -982,12 +998,12 @@ export default async function initGcLib() {
 		}
 
 		if (Roundness > 1) {
-			console.log("Roundness maximum is 1 not: ", Roundness);
+			console.error("Roundness maximum is 1 not: ", Roundness);
 		}
 
 		DrawRectangleRoundedLinesExRaw(
 				Rec.x, Rec.y, Rec.width, Rec.height,
-				Roundness, Segments, lineThick,
+				Roundness, Segments, lineThickness,
 				RGBA.r, RGBA.g, RGBA.b, RGBA.a
 			);
 		}
@@ -1057,8 +1073,6 @@ export default async function initGcLib() {
 		} else {
 			return GetTextureHeight(texture = null);
 		}
-
-		
 	}
 
 	function DisableTextureFilter(texture = null) {
@@ -1200,7 +1214,7 @@ export default async function initGcLib() {
 	const CheckCollisionMousetoRec = gcLib.cwrap("gc_CheckCollisionMousetoRec", "boolean", ["number","number","number","number","number","number"]);
 	
 
-	function CollisionRecToRec(rectA, rectB) {
+	function CollisionRec(rectA, rectB) {
 		if (arguments.length < 1 || rectA === null) {
 			console.error("Missing Key: rectA parameter is null or undefined.");
 			return false;
@@ -1217,7 +1231,7 @@ export default async function initGcLib() {
 		);
 	}
 
-	function CollisionCircleToCircle(circleA, radiusA, circleB, radiusB) {
+	function CollisionCircle(circleA, radiusA, circleB, radiusB) {
 		if (arguments.length < 1 || circleA === null) {
 			console.error("Missing Key: circleA parameter is null or undefined.");
 			return false;
@@ -1244,7 +1258,7 @@ export default async function initGcLib() {
 		);
 	}
 
-	function CollisionCircleToRec(circle, radius, rect) {
+	function CollisionCircleToRec(circle, radius, rec) {
 		if (arguments.length < 1 || circle === null) {
 			console.error("Missing Key: circleA parameter is null or undefined.");
 			return false;
@@ -1255,19 +1269,19 @@ export default async function initGcLib() {
 			return false;
 		}
 
-		if (arguments.length < 3 || rect === null) {
+		if (arguments.length < 3 || rec === null) {
 			console.error("Missing Key: rect parameter is null or undefined.");
 			return false;
 		}
 
 		return CheckCollisionCircleRec(
 			circle.x, circle.y, radius,
-			rect.x, rect.y, rect.width, rect.height
+			rec.x, rec.y, rec.width, rec.height
 		);
 	}
 
-	function CheckMouseToRec(Point, Rec) {
-		if (arguments.length < 1 || Point === null) {
+	function CheckMouseToRec(CursorPosition, Rec) {
+		if (arguments.length < 1 || CursorPosition === null) {
 			console.error("Missing Key: Point parameter is null or undefined.");
 			return false;
 		}
@@ -1278,7 +1292,7 @@ export default async function initGcLib() {
 		}
 
 		return CheckCollisionMousetoRec(
-			Point.x, Point.y,
+			CursorPosition.x, CursorPosition.y,
 			Rec.x, Rec.y, Rec.width, Rec.height
 		);
 	}
@@ -1300,12 +1314,9 @@ export default async function initGcLib() {
 
 
 	class ProgressBar {
-		constructor(Value, X, Y, SizeX, SizeY, FirstBarColor, SecondBarColor) {
-			this.FirstBar  = CreateRectangle(X, Y, SizeX, SizeY);
-			this.SecondBar = CreateRectangle(X + 5, Y + 5, SizeX - 10, SizeY - 10);
-
-			this.SizeX  = SizeX;
-			this.SizeY  = SizeY;
+		constructor(Value, PositionVec2, SizeVec2, FirstBarColor, SecondBarColor) {
+			this.FirstBar  = CreateRectangle(PositionVec2.x, PositionVec2.y, SizeVec2.x, SizeVec2.y);
+			this.SecondBar = CreateRectangle(PositionVec2.x + 5, PositionVec2.y + 5, SizeVec2.x - 10, SizeVec2.y - 10);
 
 			this.FirstBarColor  = FirstBarColor;
 			this.SecondBarColor = SecondBarColor;
@@ -1314,7 +1325,7 @@ export default async function initGcLib() {
 			
 			if (this.Value < 0) {
 				this.Value = 1;
-				console.log("don't use minus number");
+				console.error("don't use minus number");
 			} 
 
 			this.fullWidth = this.SecondBar.width;
@@ -1325,8 +1336,8 @@ export default async function initGcLib() {
 		}
 
 		Draw() {
-			DrawRecRounded(0.8, 4, this.FirstBar, this.FirstBarColor);
-			DrawRecRounded(0.8, 4, this.SecondBar, this.SecondBarColor);
+			DrawRecRounded(this.FirstBar, 0.8, 4, this.FirstBarColor);
+			DrawRecRounded(this.SecondBar, 0.8, 4, this.SecondBarColor);
 		}
 
 		UpdateMinus() {
@@ -1355,10 +1366,9 @@ export default async function initGcLib() {
 	}
 
 	class Button {
-		constructor(Text, X, Y, Font, FontSize, NormalColor, HoverColor, PressColor, TextColor) {
+		constructor(Text, PositionVec2, Font, FontSize, NormalColor, HoverColor, PressColor, TextColor) {
 			this.Text         = Text;
-			this.X            = X;
-			this.Y            = Y;
+			this.PositionVec2 = PositionVec2;
 			this.Font         = Font;
 			this.FontSize     = FontSize;
 
@@ -1373,11 +1383,11 @@ export default async function initGcLib() {
 
 			const _textSizeX  = GetTextWidth(this.Text, this.Font, this.FontSize, 1);
 			const _textSizeY  = GetTextHeight(this.Text, this.Font, this.FontSize, 1);
-			this.ButtonSize   = CreateRectangle(this.X, this.Y, _textSizeX+25, _textSizeY+10);
+			this.ButtonSize   = CreateRectangle(this.PositionVec2.x, this.PositionVec2.y, _textSizeX+25, _textSizeY+10);
 		}
 
 		Draw() {
-			DrawRecRounded(0.8, 8, this.ButtonSize, this.CurrentColor);
+			DrawRecRounded(this.ButtonSize, 0.8, 8, this.CurrentColor);
 			DrawTextEx(
 				this.Text, this.ButtonSize.x+15, this.ButtonSize.y+5, this.Font, this.FontSize, 1, this.TextColor
 			);
@@ -1413,19 +1423,19 @@ export default async function initGcLib() {
 	}
 
 	class CheckBox {
-		constructor(X, Y, SizeX, SizeY, CheckboxButtonColor, TickBoxNormalColor, TickBoxColorHover, TickBoxActiveColor) {
-			this.CheckButton = CreateRectangle(X, Y, SizeX, SizeY);
-			this.TickBox     = CreateRectangle(X+10, Y+10, SizeX-20, SizeY-20);
-			this.CheckboxButtonColor     = CheckboxButtonColor;
-			this.TickBoxColorNormal      = TickBoxNormalColor;
-			this.TickBoxColorHover       = TickBoxColorHover;
-			this.TickBoxColorActiveColor = TickBoxActiveColor;
-			this.TickBoxCurrentColor     = TickBoxNormalColor;
+		constructor(PositionVec2, SizeVec2, BackgroundColor, NormalColor, HoverColor, ActiveColor) {
+			this.CheckButton = CreateRectangle(PositionVec2.x, PositionVec2.y, SizeVec2.x, SizeVec2.y);
+			this.TickBox     = CreateRectangle(PositionVec2.x+10, PositionVec2.y+10, SizeVec2.x-20, SizeVec2.y-20);
+			this.CheckboxButtonColor     = BackgroundColor;
+			this.TickBoxColorNormal      = NormalColor;
+			this.TickBoxColorHover       = HoverColor;
+			this.TickBoxColorActiveColor = ActiveColor;
+			this.TickBoxCurrentColor     = NormalColor;
 			this.TickTrue                = false;			
 		}
 
 		Draw() {
-			DrawRecRounded(0.3, 3, this.CheckButton, this.CheckboxButtonColor);
+			DrawRecRounded(this.CheckButton, 0.3, 3, this.CheckboxButtonColor);
 			if (this.TickTrue) {
 				DrawRecRounded(1, 3, this.TickBox, this.TickBoxCurrentColor);
 			}
@@ -1451,16 +1461,21 @@ export default async function initGcLib() {
 
 	// buttons (+, -) text showing number
 	class Counter {
-		constructor(Value, TextFont, TextFontSize, X, Y, TextColor, TextBackgroundColor, SideButtonColorNormal, SideButtonColorHover, SideButtonColorPressed) {
+		constructor(Value, TextFont, TextFontSize, PositionVec2, TextColor, TextBackgroundColor, SideButtonColorNormal, SideButtonColorHover, SideButtonColorPressed) {
 			this.Value               = Value;
 			this.ValueMax            = Value;
 			this.TextFont            = TextFont;
+
+			if (TextFontSize < 60) {
+				TextFontSize = 60;
+				console.warn("Counter Text Size Must Higher than 60 or equal");
+			}
 			this.TextFontSize        = TextFontSize;
 			this.TextColor           = TextColor;
 			this.TextBackgroundColor = TextBackgroundColor;
 			const _textSizeX = GetTextWidth(this.Value.toString(), this.TextFont, this.TextFontSize, 1);
 			const _textSizeY = GetTextHeight(this.Value.toString(), this.TextFont, this.TextFontSize, 1);
-			this.TextButton = CreateRectangle(X, Y, _textSizeX+20, _textSizeY+2.5);
+			this.TextButton = CreateRectangle(PositionVec2.x, PositionVec2.y, _textSizeX+20, _textSizeY+2.5);
 			this.wait = 0.5;
 			this.pressCheck_Left = false;
 			this.pressCheck_Right = false;
@@ -1476,20 +1491,28 @@ export default async function initGcLib() {
 		}
 
 		Draw() {
-			DrawRecRounded(0.3, 3, this.TextButton, this.TextBackgroundColor);
+			DrawRecRounded(this.TextButton, 0.3, 3, this.TextBackgroundColor);
 			DrawTextEx(this.Value.toString(), this.TextButton.x+5, this.TextButton.y, this.TextFont, this.TextFontSize, 1, this.TextColor);
-			DrawRecRounded(1, 3, this.LeftButton, this.CurrentLeftButtonColor);
-			DrawRecRounded(1, 3, this.LEftButtonDot, Colors.Purple6);
-			DrawRecRounded(1, 3, this.RightButton, this.CurrentRightButtonColor);
-			DrawRecRounded(1, 3, this.RightButtonDot, Colors.Purple6);
+			DrawRecRounded(this.LeftButton, 1, 3, this.CurrentLeftButtonColor);
+			DrawRecRounded(this.LEftButtonDot, 1, 3, Colors.Purple6);
+			DrawRecRounded(this.RightButton, 1, 3, this.CurrentRightButtonColor);
+			DrawRecRounded(this.RightButtonDot, 1, 3, Colors.Purple6);
 		}
 
-		Update(ExtraValue = 1) {
+		_DontUse() {
+			// maybe i can make this dynamic size
+		}
+
+		Update(ValueChanger = 1) {
 			const MousePosition = Vector2(GetMousePositionXRaw(), GetMousePositionYRaw());
 
 			if (CheckMouseToRec(MousePosition, this.LeftButton)) {
 				if (IsMouseButtonPressedRaw(MouseButton.LEFT) && this.Value > 0) {
-					this.Value -= ExtraValue;
+					if (this.Value > ValueChanger) {
+						this.Value -= ValueChanger;
+
+					}
+
 					this.pressCheck_Left = true;
 				}
 
@@ -1514,8 +1537,9 @@ export default async function initGcLib() {
 
 			if (CheckMouseToRec(MousePosition, this.RightButton)) {
 				if (IsMouseButtonPressedRaw(MouseButton.LEFT) && this.Value < this.ValueMax) {
-					this.Value += ExtraValue;
+					this.Value += ValueChanger;
 					this.pressCheck_Right = true;
+
 				}
 
 				if (!this.pressCheck_Right) {
@@ -1537,7 +1561,6 @@ export default async function initGcLib() {
 				}
 			}
 		}
-
 	}
 
 
@@ -1557,8 +1580,8 @@ export default async function initGcLib() {
 		}
 
 		Draw() {
-			DrawRecRounded(0.4, 3, this.Slider, this.SliderColor);
-			DrawRecRounded(1, 3, this.Grab, this.GrabCurrentColor);
+			DrawRecRounded(this.Slider, 0.4, 3, this.SliderColor);
+			DrawRecRounded(this.Grab, 1, 3, this.GrabCurrentColor);
 		}
 
 		UpdateGrabPosition() {
@@ -1583,15 +1606,28 @@ export default async function initGcLib() {
 	}
 
 	class ImageButton {
-		constructor(X, Y, Width, Height, ImageNormal, ImageHover, ImagePressed, Color) {
-			this.ImageButton  = CreateRectangle(X, Y, Width, Height);
-			this.ImageCurrent = ImageNormal;
-			this.ImageNormal  = ImageNormal;
-			this.ImageHover   = ImageHover;
-			this.ImagePressed = ImagePressed;
-			ChangeTextureWidth(this.ImageCurrent, Width);
-			ChangeTextureHeight(this.ImageCurrent, Height);
+		constructor(Rec, ImageNormal, ImageHover, ImagePressed, Color) {
+			this.ImageButton  = CreateRectangle(Rec.x, Rec.y, Rec.width, Rec.height);
+			this.ImageCurrent = CreateTexture(ImageNormal);
+			this.ImageNormal  = CreateTexture(ImageNormal);
+			this.ImageHover   = CreateTexture(ImageHover);
+			this.ImagePressed = CreateTexture(ImagePressed);
+			
+			ChangeTextureWidth(this.ImageCurrent, Rec.width);
+			ChangeTextureHeight(this.ImageCurrent, Rec.height);
+
+			ChangeTextureWidth(this.ImageNormal, Rec.width);
+			ChangeTextureHeight(this.ImageNormal, Rec.height);
+
+			ChangeTextureWidth(this.ImageHover, Rec.width);
+			ChangeTextureHeight(this.ImageHover, Rec.height);
+
+			ChangeTextureWidth(this.ImagePressed, Rec.width);
+			ChangeTextureHeight(this.ImagePressed, Rec.height);
+
 			this.Color        = Color;
+			this.Timer        = 1;
+			this.TimerReady   = false;
 		}
 
 		Draw() {
@@ -1601,10 +1637,15 @@ export default async function initGcLib() {
 		Update() {
 			let MousePosition = Vector2(GetMousePositionXRaw(), GetMousePositionYRaw());
 			if (CheckMouseToRec(MousePosition, this.ImageButton)) {
-				if (IsMouseButtonPressedRaw(MouseButton.LEFT)) {
-					return true;
+				this.ImageCurrent = this.ImageHover;
+				if (IsMouseButtonDownRaw(MouseButton.LEFT)) {
+					this.ImageCurrent = this.ImagePressed;
 				}
+				return true;
 			}
+
+			return false;
+			this.ImageCurrent = this.ImageNormal;
 		}
 	}
 
@@ -1622,7 +1663,6 @@ export default async function initGcLib() {
 		Draw() {
 			DrawTextureEx(this.Texture, this.X, this.Y, this.Rotation, 1, this.Color);
 		}
-
 	}
 
 
@@ -1722,6 +1762,7 @@ export default async function initGcLib() {
 	MusicIsReadyToPlay,
 	PlayMusic,
 	SetMusicPitch,
+	SetMusicVolume,
 	Music,
 
 	// 2D
@@ -1758,8 +1799,8 @@ export default async function initGcLib() {
 	DrawTexturePro,
 
     // Collisions
-    CollisionRecToRec,
-	CollisionCircleToCircle,
+    CollisionRec,
+	CollisionCircle,
 	CollisionCircleToRec,
 	CheckMouseToRec,
 
