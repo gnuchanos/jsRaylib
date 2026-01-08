@@ -1,48 +1,48 @@
-# warning raylib to webasambly is little bit trick because webasambly virtual space
-this is why LoadFiles fuction is exist read main.js example
+# Warning: using raylib with WebAssembly is a bit tricky because WebAssembly runs in a virtual environment. That’s why the LoadFiles function exists. Check the main.js example for more details.
 
-# don't forget my hobby is programming but i'm not learn ing school i'm learn this myself sometimes i can write stupid codes but you can sen better code
+# Don’t forget, programming is my hobby. I’m self-taught, not school-trained. Sometimes my code isn’t great, so feel free to suggest better solutions.
+
 
 
 # Base Fuctions in JS
-:- getRandomFloat(min, max);
-:- RGBA(R, G, B, A);
-:- Vector2(X, Y);
+    :- getRandomFloat(min, max);
+    :- RGBA(R, G, B, A);
+    :- Vector2(X, Y);
 
 # Base C Functions
-:- add(number1, number2); number1 + number2 = return # this is my first test functions
-:- getRandomInt(min, max);
+    :- add(number1, number2); number1 + number2 = return # this is my first test functions
+    :- getRandomInt(min, max);
 
 # Raylib Window
-:- InitWindow(Width, Height, Title);
-:- WindowShouldClose()
-:- CloseWindow();
+    :- InitWindow(Width, Height, Title);
+    :- WindowShouldClose()
+    :- CloseWindow();
 
 # Audio Device
-:- InitAudioDevice();
-:- CloseAudioDevice();
+    :- InitAudioDevice();
+    :- CloseAudioDevice();
 
 # Frame
-:- SetTargetFPS(FPS);
-:- getFrameTime();
+    :- SetTargetFPS(FPS);
+    :- getFrameTime();
 
-:- SetConfigFlags(flag | flag | flag):
-    :- FLAG_VSYNC_HINT               : 0x00000040,   // Set to try enabling V-Sync on GPU
-	:- FLAG_FULLSCREEN_MODE          : 0x00000002,   // Set to run program in fullscreen
-	:- FLAG_WINDOW_RESIZABLE         : 0x00000004,   // Set to allow resizable window
-	:- FLAG_WINDOW_UNDECORATED       : 0x00000008,   // Set to disable window decoration (frame and buttons)
-	:- FLAG_WINDOW_HIDDEN            : 0x00000080,   // Set to hide window
-	:- FLAG_WINDOW_MINIMIZED         : 0x00000200,   // Set to minimize window (iconify)
-	:- FLAG_WINDOW_MAXIMIZED         : 0x00000400,   // Set to maximize window (expanded to monitor)
-	:- FLAG_WINDOW_UNFOCUSED         : 0x00000800,   // Set to window non focused
-	:- FLAG_WINDOW_TOPMOST           : 0x00001000,   // Set to window always on top
-	:- FLAG_WINDOW_ALWAYS_RUN        : 0x00000100,   // Set to allow windows running while minimized
-	:- FLAG_WINDOW_TRANSPARENT       : 0x00000010,   // Set to allow transparent framebuffer
-	:- FLAG_WINDOW_HIGHDPI           : 0x00002000,   // Set to support HighDPI
-	:- FLAG_WINDOW_MOUSE_PASSTHROUGH : 0x00004000,   // Set to support mouse passthrough, only supported when FLAG_WINDOW_UNDECORATED
-	:- FLAG_BORDERLESS_WINDOWED_MODE : 0x00008000,   // Set to run program in borderless windowed mode
-	:- FLAG_MSAA_4X_HINT             : 0x00000020,   // Set to try enabling MSAA 4X
-	:- FLAG_INTERLACED_HINT          : 0x00010000    // Set to try enabling interlaced video format (for V3D)
+# SetConfigFlags(flag | flag | flag):
+    :- FLAG_VSYNC_HINT               : // Set to try enabling V-Sync on GPU
+	:- FLAG_FULLSCREEN_MODE          : // Set to run program in fullscreen
+	:- FLAG_WINDOW_RESIZABLE         : // Set to allow resizable window
+	:- FLAG_WINDOW_UNDECORATED       : // Set to disable window decoration (frame and buttons)
+	:- FLAG_WINDOW_HIDDEN            : // Set to hide window
+	:- FLAG_WINDOW_MINIMIZED         : // Set to minimize window (iconify)
+	:- FLAG_WINDOW_MAXIMIZED         : // Set to maximize window (expanded to monitor)
+	:- FLAG_WINDOW_UNFOCUSED         : // Set to window non focused
+	:- FLAG_WINDOW_TOPMOST           : // Set to window always on top
+	:- FLAG_WINDOW_ALWAYS_RUN        : // Set to allow windows running while minimized
+	:- FLAG_WINDOW_TRANSPARENT       : // Set to allow transparent framebuffer
+	:- FLAG_WINDOW_HIGHDPI           : // Set to support HighDPI
+	:- FLAG_WINDOW_MOUSE_PASSTHROUGH : // Set to support mouse passthrough, only supported when FLAG_WINDOW_UNDECORATED
+	:- FLAG_BORDERLESS_WINDOWED_MODE : // Set to run program in borderless windowed mode
+	:- FLAG_MSAA_4X_HINT             : // Set to try enabling MSAA 4X
+	:- FLAG_INTERLACED_HINT          : // Set to try enabling interlaced video format (for V3D)
 
 # Keyboards
     .KEY_NULL            : 0,        // Key: NULL, used for no key pressed
@@ -188,102 +188,102 @@ this is why LoadFiles fuction is exist read main.js example
 -: IsCursorOnScreen();
 
 # Sound
--: LoadSoundFile(Sound_Path);
--: PlaySound(Sound);
--: IsSoundPlaying(Soun);
--: SetSoundVolume(Sound, Volume) # Volume MIN: 0 MAX: 1
--: SetSoundPitch(Sound, Pitch)   # Pitch  MIN: 0 MAX: 1
--: UnloadSoundFile(Sound);
+    -: LoadSoundFile(Sound_Path);
+    -: PlaySound(Sound);
+    -: IsSoundPlaying(Soun);
+    -: SetSoundVolume(Sound, Volume) # Volume MIN: 0 MAX: 1
+    -: SetSoundPitch(Sound, Pitch)   # Pitch  MIN: 0 MAX: 1
+    -: UnloadSoundFile(Sound);
 
 # Music
--: LoadMusicFile(Music File Path);
--: MusicIsReadyToPlay(Music);    # you must use this before to start music this is not like godot or unity you must use every music if you try play diffrent music
--: SetMusicVolume(Music, Volume) # Volume MIN: 0 MAX: 1
--: SetMusicPitch(Music, Pitch)   # Pitch MIN: 0 MAX: 1
--: Music # warning this is only for music list like things
-    -: ReadyMusic();
-    -: SetMusicVolume();
-    -: PlayMusic(DATA); # Warning if DATA True Music can play that's simple
-    -: NextMusic() :    # Simple just read gcLib.js
-    -: UnloadMusic();   # i don't know if webasambly do this for us but i'm still using
+    -: LoadMusicFile(Music File Path);
+    -: MusicIsReadyToPlay(Music);    # you must use this before to start music this is not like godot or unity you must use every music if you try play diffrent music
+    -: SetMusicVolume(Music, Volume) # Volume MIN: 0 MAX: 1
+    -: SetMusicPitch(Music, Pitch)   # Pitch MIN: 0 MAX: 1
+    -: Music # warning this is only for music list like things
+        -: ReadyMusic();
+        -: SetMusicVolume();
+        -: PlayMusic(DATA); # Warning if DATA True Music can play that's simple
+        -: NextMusic() :    # Simple just read gcLib.js
+        -: UnloadMusic();   # i don't know if webasambly do this for us but i'm still using
 
 # Draws
-:- BeginDrawing();
-:- EndDrawing();
-:- BeginMode2D(CAMERA2D);
-:- EndMode2D();
-:- BeginMode3D(CAMERA3D); # NOT IN BINDING
-:- EndMode3D();           # NOT IN BINDING
+    :- BeginDrawing();
+    :- EndDrawing();
+    :- BeginMode2D(CAMERA2D);
+    :- EndMode2D();
+    :- BeginMode3D(CAMERA3D); # NOT IN BINDING
+    :- EndMode3D();           # NOT IN BINDING
 
 # don't forget this
-:- ClearBackgroun(RGBA);
+    :- ClearBackgroun(RGBA);
 
 # Camera 2D
-:- CreateCamera2D(Offset:Vector2, Target:Vector2, Rotation, Zoom);
-:- UpdateCamera2(Camera, Target:Vector2);
-:- GetCamera2D(Camera);
-:- UnloaCamera2D();     # i nee the know if this nee or not?
+    :- CreateCamera2D(Offset:Vector2, Target:Vector2, Rotation, Zoom);
+    :- UpdateCamera2(Camera, Target:Vector2);
+    :- GetCamera2D(Camera);
+    :- UnloaCamera2D();     # i nee the know if this nee or not?
 
 # Camera 3D
-:- Not Ready
+    :- Not Ready
 
 # Font
-:- LoadFontFile(Font Path);
-:- UnloadFontFile(Font); # webAsambly maybe can do this for us??
-:- GetTextWidth(Text, Font, FontSize, Spacing);
-:- GetTextHeight(Text, Font, FontSize, Spacing);
+    :- LoadFontFile(Font Path);
+    :- UnloadFontFile(Font); # webAsambly maybe can do this for us??
+    :- GetTextWidth(Text, Font, FontSize, Spacing);
+    :- GetTextHeight(Text, Font, FontSize, Spacing);
 
 # Text
-:- DrawFPS(X, Y);
-:- DrawTextEx(Text, X, Y, Font, FontSize, Spacing, RGBA);
+    :- DrawFPS(X, Y);
+    :- DrawTextEx(Text, X, Y, Font, FontSize, Spacing, RGBA);
 
 # Create And Draw Object
-:- CreateRectangle(X, Y, Widht, Height);
-:- DrawRec(Rectangle, RGBA);
-:- DrawRecRounded(Rectangle, Roundness, Segments, RGBA);
-:- DrawRecPro(Rectangle, Origin, Rotation, RGBA);
-:- DrawRecLines(Rectangle, RGBA);
-:- DrawRecLinexEx(Rectangle, LineThickness, RGBA);
-:- DrawRecRoundedLines(Rectangle, Roundness, Segments, RGBA);
-:- DrawRecRoundedLinesEx(Rectangle, Rounness, Segments, LineThickness)
+    :- CreateRectangle(X, Y, Widht, Height);
+    :- DrawRec(Rectangle, RGBA);
+    :- DrawRecRounded(Rectangle, Roundness, Segments, RGBA);
+    :- DrawRecPro(Rectangle, Origin, Rotation, RGBA);
+    :- DrawRecLines(Rectangle, RGBA);
+    :- DrawRecLinexEx(Rectangle, LineThickness, RGBA);
+    :- DrawRecRoundedLines(Rectangle, Roundness, Segments, RGBA);
+    :- DrawRecRoundedLinesEx(Rectangle, Rounness, Segments, LineThickness)
 
 # 2D Texture
-:- CreateTexture(Texture Path);
-:- UnloadTexture(Texture);
-:- ChangeTextureWidth(Texture);
-:- ChangeTextureHeight(Texture);
-:- GetTextureWithValue(Texture);
-:- GetTextureHeightValue(Texture);
-:- DisableTextureFilter(Texture);
-:- DrawTexture(Texture, X, Y, RGBA);
-:- DrawTextureRec(Texture, Source: Rectangle, Poition: Vector2, RGBA);
-:- DrawTextureEx(Texture, X, Y, Rotation, Scale, RGBA):
-:- DrawTexturePro(Texture, Source: Rectangle, Dest: Rectangle, Origin: Vector2, Rotation, RGBA); # this is little hard for new just look raylib example
+    :- CreateTexture(Texture Path);
+    :- UnloadTexture(Texture);
+    :- ChangeTextureWidth(Texture);
+    :- ChangeTextureHeight(Texture);
+    :- GetTextureWithValue(Texture);
+    :- GetTextureHeightValue(Texture);
+    :- DisableTextureFilter(Texture);
+    :- DrawTexture(Texture, X, Y, RGBA);
+    :- DrawTextureRec(Texture, Source: Rectangle, Poition: Vector2, RGBA);
+    :- DrawTextureEx(Texture, X, Y, Rotation, Scale, RGBA):
+    :- DrawTexturePro(Texture, Source: Rectangle, Dest: Rectangle, Origin: Vector2, Rotation, RGBA); # this is little hard for new just look raylib example
 
 # 2D Collision
-:- CollisionRec(RectangleA, RectangleB);
-:- CollisionCircle(CircleA, RadiusA, CircleB, RadiusB);
-:- CollisionCircleToRec(Circle, Radius, Rectangle)
-:- CheckNouseToRec(Cursor: Vector2, Rectangle);
+    :- CollisionRec(RectangleA, RectangleB);
+    :- CollisionCircle(CircleA, RadiusA, CircleB, RadiusB);
+    :- CollisionCircleToRec(Circle, Radius, Rectangle)
+    :- CheckNouseToRec(Cursor: Vector2, Rectangle);
 
 # Extra 
-:- Colors.RGBA -> Colors.Purple0
+    :- Colors.RGBA -> Colors.Purple0
 
 # Simple UI
-:- new ProgressBar(Value, PositionVec2, SizeVec2, FirstBarColor, SecondBarColor);
-    :- Draw();
-    :- UpdateMinus();
-    :- UpdatePlus();
-:- new Button(Text, PositionVec2, Font, FontSize, NormalColor, HoverColor, PressColor, TextColor);
-    :- Update();
-    :- Draw();
-:- new CheckBox(PositionVec2, SizeVec2, BackgroundColor, NormalColor, HoverColor, ActiveColor);
-    :- Update();
-    :- Draw();
-:- new Counter(Value, TextFont, TextFontSize, PositionVec2: Vector2, TextColor, TextBackgroundColor, SideButtonColorNormal, SideButtonColorHover, SieButtonColorPressed);
-    :- Update();
-    :- Draw();
-    :- [Button-]Number[Button+]
+    :- new ProgressBar(Value, PositionVec2, SizeVec2, FirstBarColor, SecondBarColor);
+        :- Draw();
+        :- UpdateMinus();
+        :- UpdatePlus();
+    :- new Button(Text, PositionVec2, Font, FontSize, NormalColor, HoverColor, PressColor, TextColor);
+        :- Update();
+        :- Draw();
+    :- new CheckBox(PositionVec2, SizeVec2, BackgroundColor, NormalColor, HoverColor, ActiveColor);
+        :- Update();
+        :- Draw();
+    :- new Counter(Value, TextFont, TextFontSize, PositionVec2: Vector2, TextColor, TextBackgroundColor, SideButtonColorNormal, SideButtonColorHover, SieButtonColorPressed);
+        :- Update();
+        :- Draw();
+        :- [Button-]Number[Button+]
 
 
 
