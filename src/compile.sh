@@ -12,6 +12,7 @@
 #./emsdk install latest
 #./emsdk activate latest
 
+# emcc -xc /dev/null -o /tmp/a.out # don't forget this
 
 # this is for only gnu/linux
 #source ~/tmp/emsdk/emsdk_env.fish or emsdk_env.sh

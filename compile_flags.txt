@@ -1,0 +1,3 @@
+-isystem
+/home/archkubi/.cache/emscripten/sysroot/include
+-D__EMSCRIPTEN__

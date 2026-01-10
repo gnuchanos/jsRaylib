@@ -67,18 +67,170 @@ export default async function initGcLib() {
 		return Math.random() * (max - min) + min
 	}
 
+	// -------------------------------------- Colors ---------------------------------------------------------------------------------------
+	const Colors = {
+		// Red Colors and Shades
+		Red1: { r: 255, g: 0,   b: 0,   a: 255 },
+		Red2: { r: 255, g: 69,  b: 0,   a: 255 },
+		Red3: { r: 220, g: 20,  b: 60,  a: 255 },
+		Red4: { r: 255, g: 99,  b: 71,  a: 255 },
+		Red5: { r: 255, g: 160, b: 122, a: 255 },
+		Red6: { r: 178, g: 34,  b: 34,  a: 255 },
+		Red7: { r: 255, g: 0,   b: 0,   a: 255 },
+		Red8: { r: 139, g: 0,   b: 0,   a: 255 },
 
+		// Green Colors and Shades
+		Green1: { r: 0,   g: 128, b: 0,   a: 255 },
+		Green2: { r: 0,   g: 255, b: 0,   a: 255 },
+		Green3: { r: 127, g: 255, b: 0,   a: 255 },
+		Green4: { r: 34,  g: 139, b: 34,  a: 255 },
+		Green5: { r: 50,  g: 205, b: 50,  a: 255 },
+		Green6: { r: 173, g: 255, b: 47,  a: 255 },
+		Green7: { r: 85,  g: 107, b: 47,  a: 255 },
+		Green8: { r: 0,   g: 139, b: 139, a: 255 },
+
+		// Blue Colors and Shades
+		Blue1: { r: 0,   g: 0,   b: 255, a: 255 },
+		Blue2: { r: 0,   g: 0,   b: 128, a: 255 },
+		Blue3: { r: 135, g: 206, b: 235, a: 255 },
+		Blue4: { r: 0,   g: 0,   b: 139, a: 255 },
+		Blue5: { r: 173, g: 216, b: 230, a: 255 },
+		Blue6: { r: 30,  g: 144, b: 255, a: 255 },
+		Blue7: { r: 0,   g: 0,   b: 205, a: 255 },
+		Blue8: { r: 25,  g: 25,  b: 112, a: 255 },
+
+		// Yellow Colors and Shades
+		Yellow1: { r: 255, g: 255, b: 0,   a: 255 },
+		Yellow2: { r: 255, g: 215, b: 0,   a: 255 },
+		Yellow3: { r: 255, g: 165, b: 0,   a: 255 },
+		Yellow4: { r: 255, g: 192, b: 203, a: 255 },
+		Yellow5: { r: 255, g: 69,  b: 0,   a: 255 },
+		Yellow6: { r: 255, g: 99,  b: 71,  a: 255 },
+		Yellow7: { r: 255, g: 255, b: 224, a: 255 },
+		Yellow8: { r: 255, g: 255, b: 102, a: 255 },
+
+		// Orange Colors and Shades
+		Orange1: { r: 255, g: 165, b: 0,   a: 255 },
+		Orange2: { r: 255, g: 69,  b: 0,   a: 255 },
+		Orange3: { r: 255, g: 99,  b: 71,  a: 255 },
+		Orange4: { r: 255, g: 140, b: 0,   a: 255 },
+		Orange5: { r: 255, g: 127, b: 80,  a: 255 },
+		Orange6: { r: 255, g: 160, b: 122, a: 255 },
+		Orange7: { r: 255, g: 215, b: 0,   a: 255 },
+		Orange8: { r: 255, g: 182, b: 193, a: 255 },
+
+		// Navy Colors and Shades
+		Navy1: { r: 0,   g: 0,   b: 128, a: 255 },
+		Navy2: { r: 0,   g: 0,   b: 139, a: 255 },
+		Navy3: { r: 0,   g: 0,   b: 205, a: 255 },
+		Navy4: { r: 0,   g: 0,   b: 255, a: 255 },
+		Navy5: { r: 0,   g: 0,   b: 102, a: 255 },
+		Navy6: { r: 0,   g: 0,   b: 68,  a: 255 },
+		Navy7: { r: 25,  g: 25,  b: 112, a: 255 },
+		Navy8: { r: 51,  g: 51,  b: 153, a: 255 },
+
+		// Pink Colors and Shades
+		Pink1: { r: 255, g: 192, b: 203, a: 255 },
+		Pink2: { r: 255, g: 105, b: 180, a: 255 },
+		Pink3: { r: 255, g: 20,  b: 147, a: 255 },
+		Pink4: { r: 219, g: 112, b: 147, a: 255 },
+		Pink5: { r: 199, g: 21,  b: 133, a: 255 },
+		Pink6: { r: 255, g: 182, b: 193, a: 255 },
+		Pink7: { r: 255, g: 192, b: 203, a: 255 },
+		Pink8: { r: 255, g: 105, b: 180, a: 255 },
+
+		// Purple Colors and Shades
+		Purple1: { r: 170, g: 102, b: 255, a: 255 },
+		Purple2: { r: 121, g: 13,  b: 255, a: 255 },
+		Purple3: { r: 104, g: 11,  b: 219, a: 255 },
+		Purple4: { r: 89,  g: 8,   b: 189, a: 255 },
+		Purple5: { r: 70,  g: 6,   b: 148, a: 255 },
+		Purple6: { r: 51,  g: 3,   b: 110, a: 255 },
+		Purple7: { r: 34,  g: 2,   b: 74,  a: 255 },
+		Purple8: { r: 15,  g: 1,   b: 33,  a: 255 },
+
+		// Light Purple
+		LightPurple0: { r: 163, g: 89,  b: 255, a: 255 },
+		LightPurple1: { r: 150, g: 82,  b: 235, a: 255 },
+		LightPurple2: { r: 135, g: 74,  b: 212, a: 255 },
+		LightPurple3: { r: 120, g: 67,  b: 186, a: 255 },
+		LightPurple4: { r: 100, g: 56,  b: 156, a: 255 },
+		LightPurple5: { r: 82,  g: 47,  b: 128, a: 255 },
+		LightPurple6: { r: 58,  g: 33,  b: 92,  a: 255 },
+		LightPurple7: { r: 37,  g: 22,  b: 59,  a: 255 },
+
+		// Turquoise Colors and Shades
+		Turquoise1: { r: 64,  g: 224, b: 208, a: 255 },
+		Turquoise2: { r: 0,   g: 206, b: 209, a: 255 },
+		Turquoise3: { r: 32,  g: 178, b: 170, a: 255 },
+		Turquoise4: { r: 0,   g: 139, b: 139, a: 255 },
+		Turquoise5: { r: 0,   g: 255, b: 255, a: 255 },
+		Turquoise6: { r: 0,   g: 206, b: 209, a: 255 },
+		Turquoise7: { r: 32,  g: 178, b: 170, a: 255 },
+		Turquoise8: { r: 0,   g: 139, b: 139, a: 255 },
+
+		// Gray Colors and Shades
+		Gray1: { r: 128, g: 128, b: 128, a: 255 },
+		Gray2: { r: 169, g: 169, b: 169, a: 255 },
+		Gray3: { r: 192, g: 192, b: 192, a: 255 },
+		Gray4: { r: 211, g: 211, b: 211, a: 255 },
+		Gray5: { r: 220, g: 220, b: 220, a: 255 },
+		Gray6: { r: 245, g: 245, b: 245, a: 255 },
+		Gray7: { r: 105, g: 105, b: 105, a: 255 },
+		Gray8: { r: 47,  g: 79,  b: 79,  a: 255 },
+
+		// Black and White
+		Black: { r: 0,   g: 0,   b: 0,   a: 255 },
+		White: { r: 255, g: 255, b: 255, a: 255 },
+	};
+
+
+
+	const GnuChanOSColor = {
+		BGColor:  { r: 36,  g: 0,   b: 70,  a: 255 },
+		TColor:   { r: 157, g: 78,  b: 221, a: 255 },
+
+		// First Part
+		FColors0:  { r: 31,  g: 0,   b: 71,  a: 255 },
+		FColors1:  { r: 36,  g: 0,   b: 82,  a: 255 },
+		FColors2:  { r: 38,  g: 0,   b: 88,  a: 255 },
+		FColors3:  { r: 42,  g: 0,   b: 97,  a: 255 },
+
+		FColors4:  { r: 48,  g: 0,   b: 111, a: 255 },
+		FColors5:  { r: 57,  g: 0,   b: 130, a: 255 },
+		FColors6:  { r: 64,  g: 0,   b: 148, a: 255 },
+		FColors7:  { r: 74,  g: 0,   b: 170, a: 255 },
+
+		FColors8:  { r: 79,  g: 0,   b: 181, a: 255 },
+		FColors9:  { r: 86,  g: 0,   b: 198, a: 255 },
+		FColors10: { r: 99,  g: 0,   b: 228, a: 255 },
+		FColors11: { r: 111, g: 0,   b: 255, a: 255 },
+
+		// Second Part
+		SColors0:  { r: 29,  g: 0,   b: 49,  a: 255 },
+		SColors1:  { r: 30,  g: 0,   b: 55,  a: 255 },
+		SColors2:  { r: 57,  g: 0,   b: 95,  a: 255 },
+		SColors3:  { r: 81,  g: 0,   b: 135, a: 255 },
+
+		// Python class’ta overwrite olduğu için SON değerleri aldım
+		SColors4:  { r: 87,  g: 0,   b: 160, a: 255 },
+		SColors5:  { r: 99,  g: 0,   b: 184, a: 255 },
+		SColors6:  { r: 111, g: 0,   b: 205, a: 255 },
+		SColors7:  { r: 138, g: 0,   b: 255, a: 255 },
+	};
 
 	const RGBA = function(r = 255, g = 255, b = 255, a = 255) {
 		return { r, g, b, a };
 	};
 
-
 	const Vector2 = function(x = 0, y = 0) {
 		return { x, y };
 	};
 
-
+	// not finish 3D
+	const Vector3 = function(x = 0, y = 0, z = 0) {
+		return { x, y, z };
+	};
 
 	// Base C Lang
     const add = gcLib.cwrap("add", "number", ["number", "number"]);
@@ -86,7 +238,7 @@ export default async function initGcLib() {
 
 	// Raylib
     const FileExists = gcLib.cwrap("gcFileExists", "boolean", ["string"]); // i never testing this webasambly file system problem
-    
+
     // Raylib Window
     const InitWindow = gcLib.cwrap("gc_InitWindow", "void", ["number", "number", "string"]);
     const WindowShouldClose = gcLib.cwrap("gc_WindowShouldClose", "boolean", [], { async: true });
@@ -117,15 +269,9 @@ export default async function initGcLib() {
 		EndMode2DRaw();
 	}
 
-
+	// -------------------------------------------- Simple Draw Call for Camera 3D ------------------------------------------------------------------------------------------
 
 	
-
-
-
-
-
-
 
 
 	// Settings
@@ -673,6 +819,12 @@ export default async function initGcLib() {
 	}
 
 
+	// -------------------------------------------------------------- Camera 3D ---------------------------------------------------------------------------------------------------
+
+
+
+
+
 	// ----------------------------------------------------------------- Text And Font ------------------------------------------------------------------------------
 
 	const LoadFont = gcLib.cwrap("gc_LoadFont", "number", ["string"]);
@@ -790,6 +942,10 @@ export default async function initGcLib() {
 
 		DrawTextExRaw(font, text, x, y, fontSize, spacing, RGBA.r, RGBA.g, RGBA.b, RGBA.a);
 	}
+
+
+	// ------------------------------------------------------------ Line Object ---------------------------------------------------------------------------------------------
+
 
 
 	// ------------------------------------------------------------ Rectangle Object ---------------------------------------------------------------------------------------------
@@ -1007,6 +1163,9 @@ export default async function initGcLib() {
 				RGBA.r, RGBA.g, RGBA.b, RGBA.a
 			);
 		}
+
+	// ------------------------------------------------------------ Circle Object ---------------------------------------------------------------------------------------------
+
 
 
 	// ---------------------------------------------- Texture2D Object ---------------------------------------------------------------------------------------------------
@@ -1297,20 +1456,11 @@ export default async function initGcLib() {
 		);
 	}
 
-	// -------------------------------------- Colors ---------------------------------------------------------------------------------------
-	const Colors = {
-		Purple0 : RGBA(17, 0, 33, 255),
-		Purple1 : RGBA(28, 1, 54, 255),
-		Purple2 : RGBA(46, 2, 89, 255),
-		Purple3 : RGBA(60, 2, 117, 255),
-		Purple4 : RGBA(79, 3, 153, 255),
-		Purple5 : RGBA(97, 2, 189, 255),
-		Purple6 : RGBA(110, 0, 217, 255),
-		Purple7 : RGBA(124, 0, 245, 255),
+	
 
-		
 
-	};
+
+
 
 
 	class ProgressBar {
@@ -1671,14 +1821,13 @@ export default async function initGcLib() {
 
   return {
 	// Extra Class
-	Colors,
 	Button,
 	ProgressBar,	
 	CheckBox,
 	Counter,
 	Slider,
 	ImageButton,
-
+	Image,
 
 
 	// Get Variables
@@ -1687,6 +1836,8 @@ export default async function initGcLib() {
     getRandomFloat,
 	getFrameTime,
 
+	Colors,
+	GnuChanOSColor,
 
 	// Extra
     FileExists,

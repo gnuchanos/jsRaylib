@@ -173,6 +173,7 @@ async function main() {
 	const LogoBoot = gcLib.CreateTexture(AssetList[AssetListIndex.BG]);
 	gcLib.ChangeTextureHeight(LogoBoot, ScreenHeight);
 	gcLib.ChangeTextureWidth(LogoBoot, ScreenWidth);
+
 	let LogoBootTimer = 5;
 	let LoadingForBoot = new gcLib.ProgressBar(
 		LogoBootTimer, 
@@ -286,8 +287,8 @@ async function main() {
 
 
 
-
-
+	
+	const ImageTest = new gcLib.Image(AssetList[AssetListIndex.BG], 0, 0, ScreenWidth, ScreenHeight, 0, gcLib.RGBA(255, 255, 255, 255));
 
 
 
@@ -369,6 +370,8 @@ async function main() {
 						LoadingForBoot.Draw();
 
 					} else if (CurrentScene.Scene == GameScene.Menu) {
+						ImageTest.Draw();
+
 						_MainMenu.Render();
 						LOGO.Draw();
 						testB.Draw();

@@ -8,6 +8,8 @@
     :- getRandomFloat(min, max);
     :- RGBA(R, G, B, A);
     :- Vector2(X, Y);
+	:- Colors.color -> Color.Purple1
+	:- GnuChanOSColor.color -> GnuChanOSColor.TColor
 
 # Base C Functions
     :- add(number1, number2); number1 + number2 = return # this is my first test functions
@@ -284,6 +286,10 @@
         :- Update();
         :- Draw();
         :- [Button-]Number[Button+]
-
+    :- new ImageButton(Rectangle, ImageNormal, ImageHover, ImagePresse, Color);
+        :- Update();
+        :- Draw();
+    :- new Image(Texture, X, Y, Width, Height, Rotation, RGBA);
+        :- Draw();
 
 

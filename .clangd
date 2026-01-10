@@ -1,0 +1,4 @@
+CompileFlags:
+  Compiler: /usr/lib/emscripten/emcc
+  Add:
+    - -D__EMSCRIPTEN__
