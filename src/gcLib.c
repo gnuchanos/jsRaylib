@@ -1,3 +1,4 @@
+#include <emscripten/em_types.h>
 #include <emscripten/emscripten.h>
 #include <raylib.h>
 #include <raymath.h>
@@ -6,27 +7,16 @@
 #include <stdio.h>
 
 
-
-
 // Simple Functions
-int add(int a, int b) {
-    return a + b;
-}
-
-int gc_GetRandomNumber(int min, int max) {
-    return GetRandomValue(min, max);
-}
-
-float gc_GetFrameTime() {
-	return GetFrameTime();
-}
+int add(int a, int b) { return a + b; }
+int gc_GetRandomNumber(int min, int max) { return GetRandomValue(min, max); }
+float gc_GetFrameTime() { return GetFrameTime(); }
 
 
 
 // Raylib Window
 void gc_InitWindow(int Width, int Height, const char* Title) { InitWindow(Width, Height, Title); }
 bool gc_WindowShouldClose() { return WindowShouldClose(); }
-
 void gc_CloseWindow() { CloseWindow(); }
 
 // Audio Device
@@ -271,9 +261,7 @@ void gc_DrawTexturePro(
 }
 
 // Extra
-bool gcFileExists(const char* filePath) {
-    return FileExists(filePath);
-}
+bool gcFileExists(const char* filePath) { return FileExists(filePath); }
 
 
 

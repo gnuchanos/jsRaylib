@@ -219,8 +219,8 @@ export default async function initGcLib() {
 		SColors7:  { r: 138, g: 0,   b: 255, a: 255 },
 	};
 
-	const RGBA = function(r = 255, g = 255, b = 255, a = 255) {
-		return { r, g, b, a };
+	const RGBA = function(Color) {
+		return { Color.r, Color.g, Color.b, Color.a };
 	};
 
 	const Vector2 = function(x = 0, y = 0) {
