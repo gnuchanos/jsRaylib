@@ -47,9 +47,7 @@ export default async function initGcLib() {
 
 				console.log(`Loaded ${file} as ${fullPath}`);
 			}
-		} catch (e) {
-			console.error(e);
-}
+		} catch (e) { console.error(e); }
 	}
 
 	// ------------------------------- extra function -----------------------------------
@@ -219,8 +217,13 @@ export default async function initGcLib() {
 		SColors7:  { r: 138, g: 0,   b: 255, a: 255 },
 	};
 
-	const RGBA = function(Color) {
-		return { Color.r, Color.g, Color.b, Color.a };
+	const RGBA = function(r, g, b, a) {
+		return {
+			r:r,
+			g:g,
+			b:b,
+			a:a
+		}
 	};
 
 	const Vector2 = function(x = 0, y = 0) {
@@ -717,13 +720,17 @@ export default async function initGcLib() {
 			MusicIsReadyToPlay(this.MusicList[this.CurrentIndex]);
 		}
 
-		SetMusicVolume() {
-			for (let i = 0; i < this.MusicList.length; i++) {
-				SetMusicVolume(this.MusicList[this.CurrentIndex], this.Volume);
+		SetMusicVolume(VOLUME = null) {
+			if (VOLUME != null) {
+				this.Volume = VOLUME;
+
+				for (let i = 0; i < this.MusicList.length; i++) {
+					SetMusicVolume(this.MusicList[this.CurrentIndex], this.Volume);
+				}				
 			}
 		}
 
-		PlayMusic(DATA) {
+		PlayMusic(DATA = null) {
 			if (DATA != null) {
 				if (DATA) {
 					PlayMusic(this.MusicList[this.CurrentIndex]);
@@ -751,7 +758,7 @@ export default async function initGcLib() {
 	// ----------------------------------------------------- ClearBacground You need this ---------------------------------------------
 	const ClearBackgroundRaw = gcLib.cwrap("gc_ClearBackground", "void", ["number", "number", "number", "number"]);
 	function ClearBackground(RGBA) {
-		return ClearBackgroundRaw(RGBA.r, RGBA.g, RGBA.b, RGBA.a);
+		ClearBackgroundRaw(RGBA.r, RGBA.g, RGBA.b, RGBA.a);
 	}
 
 
@@ -1653,14 +1660,38 @@ export default async function initGcLib() {
 			// maybe i can make this dynamic size
 		}
 
+		_UpdateCounter() {
+			this.Value = Math.round(this.Value * 10) / 10;
+
+			const _textSizeX        = GetTextWidth(this.Value.toString(), this.TextFont, this.TextFontSize, 1);
+			const _textSizeY        = GetTextHeight(this.Value.toString(), this.TextFont, this.TextFontSize, 1);
+			this.TextButton.width   = _textSizeX+20;
+			this.TextButton.height  = _textSizeY+2.5;
+	
+			this.LeftButton.x       = this.TextButton.x-65;
+			this.LeftButton.y       = this.TextButton.y;
+			this.LeftButton.height  = this.TextButton.height;
+
+			this.LEftButtonDot.x    = this.TextButton.x-55;
+			this.LEftButtonDot.y    = this.TextButton.y+10
+
+			this.RightButton.x      = this.TextButton.x+this.TextButton.width+5;
+			this.RightButton.y      = this.TextButton.y;
+			this.RightButton.height = this.TextButton.height;
+
+			this.RightButtonDot.x   = this.TextButton.x+this.TextButton.width+15;
+			this.RightButtonDot.y   = this.TextButton.y+10
+		}
+
 		Update(ValueChanger = 1) {
 			const MousePosition = Vector2(GetMousePositionXRaw(), GetMousePositionYRaw());
 
+			// left button
 			if (CheckMouseToRec(MousePosition, this.LeftButton)) {
 				if (IsMouseButtonPressedRaw(MouseButton.LEFT) && this.Value > 0) {
 					if (this.Value > ValueChanger) {
 						this.Value -= ValueChanger;
-
+						return true;
 					}
 
 					this.pressCheck_Left = true;
@@ -1684,11 +1715,13 @@ export default async function initGcLib() {
 					this.wait = 0.5;
 				}
 			}
-
+			
+			// right button
 			if (CheckMouseToRec(MousePosition, this.RightButton)) {
 				if (IsMouseButtonPressedRaw(MouseButton.LEFT) && this.Value < this.ValueMax) {
 					this.Value += ValueChanger;
 					this.pressCheck_Right = true;
+					return true;
 
 				}
 
@@ -1710,6 +1743,10 @@ export default async function initGcLib() {
 					this.wait = 0.5;
 				}
 			}
+
+			this._UpdateCounter()
+
+			return false;
 		}
 	}
 
@@ -1776,6 +1813,7 @@ export default async function initGcLib() {
 			ChangeTextureHeight(this.ImagePressed, Rec.height);
 
 			this.Color        = Color;
+			console.log(this.Color.a)
 			this.Timer        = 1;
 			this.TimerReady   = false;
 		}
@@ -1794,8 +1832,8 @@ export default async function initGcLib() {
 				return true;
 			}
 
-			return false;
 			this.ImageCurrent = this.ImageNormal;
+			return false;
 		}
 	}
 

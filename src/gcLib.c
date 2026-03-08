@@ -1,4 +1,3 @@
-#include <emscripten/em_types.h>
 #include <emscripten/emscripten.h>
 #include <raylib.h>
 #include <raymath.h>

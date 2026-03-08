@@ -110,30 +110,22 @@ async function main() {
 	//  Don't Touch Here ->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
-    const ScreenWidth  = 1600;
-    const ScreenHeight = 900;
-    const Title = "uWu"
+	const ScreenWidth  = 1600;
+  	const ScreenHeight = 900;
+  	const Title = "uWu"
 
-    gcLib.InitWindow(ScreenWidth, ScreenHeight, Title);
-    gcLib.InitAudioDevice();
+  	gcLib.InitWindow(ScreenWidth, ScreenHeight, Title);
+  	gcLib.InitAudioDevice();
 	gcLib.SetConfigFlags(gcLib.ConfigFlags.FLAG_MSAA_4X_HINT | gcLib.ConfigFlags.FLAG_FULLSCREEN_MODE);
 
-
 	// Default Please Don't Remove this is not load asset .wasm can't see real file path
-    const AssetList = [
+	const AssetList = [
 		"resources/Font/OpenSans-Italic.ttf",
 		"resources/Images/bg.png",
 	
 
 
 		// All Assets
-		"resources/Sound/music.wav",
-		"resources/Sound/hitSound.wav",
-		"resources/Sound/point.wav",
-
-		"resources/Images/UI/SoundOpen_Normal.png",
-		"resources/Images/UI/SoundOpen_Hover.png",
-		"resources/Images/UI/SoundOpen_Pressed.png",
 
 	];
 
@@ -145,17 +137,11 @@ async function main() {
 
 
 		// All Assets
-		_Music    : 2,
-		_HitSound : 3,
-		_Point    : 4,
-		_Normal   : 5,
-		_Hover    : 6,
-		_Pressed  : 7,
 
 
 	};
 
-    await gcLib.loadFiles(AssetList);
+  await gcLib.loadFiles(AssetList);
 	// Default Please Don't Remove
 
 	// All Scene
@@ -183,21 +169,13 @@ async function main() {
 	);
 
 	// Menu Screen
-
-
-
-
-
 	const LOGO = new gcLib.ImageButton(
-		gcLib.CreateRectangle(100, 600, 100, 100),
+		gcLib.CreateRectangle(1000, 60, 100, 100),
 		AssetList[AssetListIndex._Normal],
 		AssetList[AssetListIndex._Hover],
 		AssetList[AssetListIndex._Pressed],
 		gcLib.RGBA(255, 255, 255, 255)
 	);
-
-
-
 
 	class MainMenu {
 		constructor(DefaultFont, ScreenWidth, ScreenHeight) {
@@ -215,8 +193,6 @@ async function main() {
 				DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
 			);
 
-
-
 			this.ButtonsBackground = gcLib.CreateRectangle (
 				// First Button
 				this.StartGameButton.ButtonSize.x - 30,
@@ -226,16 +202,14 @@ async function main() {
 				this.JsRaylibGithubButton.ButtonSize.width + 60,
 				this.JsRaylibGithubButton.ButtonSize.y + 60
 			);
-
-
 		}
 
 		Render() {
-			gcLib.DrawRecRounded(this.ButtonsBackground, 0.2, 3, gcLib.Colors.Purple0);
+
+			gcLib.DrawRecRounded(this.ButtonsBackground, 0.2, 3, gcLib.Colors.Purple1);
 			this.StartGameButton.Draw();
 			this.ADButton.Draw();
 			this.JsRaylibGithubButton.Draw();
-
 		}
 
 		Update(CurrentScene, Music) {
@@ -257,38 +231,21 @@ async function main() {
 	}
 
 	const _MainMenu = new MainMenu(DefaultFont, ScreenWidth, ScreenHeight);
-
-
 	// Game Variables
 	
 
-	const MusicList = [
-		gcLib.LoadMusicFile(AssetList[AssetListIndex._Music]),
-		gcLib.LoadMusicFile(AssetList[AssetListIndex._HitSound]),
-		gcLib.LoadMusicFile(AssetList[AssetListIndex._Point]),
-	
-
-	]
-	
-	const testMusicList = new gcLib.Music(MusicList);
-	testMusicList.ReadyMusic();
-	testMusicList.SetMusicVolume();
-
-	let numb = 10;
-	const testB = new gcLib.Counter(
-		100,
-		DefaultFont, 160, gcLib.Vector2(400, 600),
-		gcLib.Colors.Purple0,
-		gcLib.Colors.Purple2,
-		gcLib.Colors.Purple4,
-		gcLib.Colors.Purple6,
-		gcLib.Colors.Purple7
-	);
 
 
 
-	
-	const ImageTest = new gcLib.Image(AssetList[AssetListIndex.BG], 0, 0, ScreenWidth, ScreenHeight, 0, gcLib.RGBA(255, 255, 255, 255));
+
+
+
+
+
+
+
+
+
 
 
 
@@ -317,13 +274,13 @@ async function main() {
 	});
 
 	async function loop() {
-        if (!(await gcLib.WindowShouldClose())) {
+    	if (!(await gcLib.WindowShouldClose())) {
 			if (!AdTRUE) {
 
 				if (AdBLOCK) {
-					
+
 					// if someone use adblock
-	
+
 				}
 
 				if (CurrentScene.Scene == GameScene.Logo) {
@@ -336,18 +293,13 @@ async function main() {
 				} else if (CurrentScene.Scene == GameScene.Menu) {
 					_MainMenu.Update(CurrentScene);
 
+
 					testMusicList.PlayMusic(DATA.Settings.MusicON);
+					// Test Change Music
 					if (gcLib.IsKeyPressed(gcLib.Keyboard.KEY_A)) {
 						testMusicList.NextMusic();
 					}
 
-					if (LOGO.Update()) {
-						if (gcLib.IsButtonPressed(gcLib.MouseButton.LEFT)) {
-							DATA.Settings.MusicON = DATA.Settings.MusicON ? false : true;
-						}
-					}
-
-					testB.Update(numb);
 
 				} else if (CurrentScene.Scene == GameScene.GamePlay) {
 
@@ -360,45 +312,46 @@ async function main() {
 			
 			// this place not for update things just drawing for make simple
 			
-            gcLib.BeginDrawing();
-                gcLib.ClearBackground(gcLib.RGBA(6, 0, 13, 255));
+      gcLib.BeginDrawing();
+			gcLib.ClearBackground(gcLib.RGBA(6, 0, 13, 255));
 
-				if (!AdTRUE) {
+			if (!AdTRUE) {
 
-					if (CurrentScene.Scene == GameScene.Logo) {
-						gcLib.DrawTexture(LogoBoot, 0, 0, gcLib.RGBA(255, 255, 255, 255))
-						LoadingForBoot.Draw();
+			  if (CurrentScene.Scene == GameScene.Logo) {
+				  gcLib.DrawTexture(LogoBoot, 0, 0, gcLib.RGBA(255, 255, 255, 255))
+				  LoadingForBoot.Draw();
 
-					} else if (CurrentScene.Scene == GameScene.Menu) {
-						ImageTest.Draw();
+			  } else if (CurrentScene.Scene == GameScene.Menu) {
+				  ImageTest.Draw();
 
-						_MainMenu.Render();
-						LOGO.Draw();
-						testB.Draw();
-
-
-					} else if (CurrentScene.Scene == GameScene.GamePlay) {
-
-					} else if (CurrentScene.Scene == GameScene.End) {
+					_MainMenu.Render();
+					LOGO.Draw();
+					testB.Draw();
 
 
-					}
+				} else if (CurrentScene.Scene == GameScene.GamePlay) {
+
+				} else if (CurrentScene.Scene == GameScene.End) {
+
+
 				}
+			}
 
-				gcLib.DrawFPS(10, 10);
+			gcLib.DrawFPS(10, 10);
 
 			gcLib.EndDrawing();
             requestAnimationFrame(loop);
-        } else {
-            // Unload All Here
-			testMusicList.UnloadMusic();
+      } else {
 
-            
-            // Unload All Here
-            gcLib.CloseWindow();
-            gcLib.CloseAudioDevice();
-        }
+        // Unload All Here
+		testMusicList.UnloadMusic();
+
+        // Unload All Here
+        gcLib.CloseWindow();
+        gcLib.CloseAudioDevice();
     }
+
+  }
 
   loop();
 }

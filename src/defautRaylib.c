@@ -1,4 +1,4 @@
-#include <raylib.h>
+#include <include\raylib.h>
 #include <stdio.h>
 
 int main(void) {
@@ -13,6 +13,7 @@ int main(void) {
 
     printf("X: %f, Y: %f, Width: %f, Height: %f \n", Walls[0].x, Walls[0].y, Walls[0].width, Walls[0].height);
 
+    
 
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
