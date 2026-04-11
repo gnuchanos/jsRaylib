@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # first you need
+
+# git clone https://github.com/emscripten-core/emsdk.git
+# cd emsdk
+# ./emsdk install latest
+# ./emsdk activate latest
+# source ./emsdk_env.sh
+
 # git clone https://github.com/raysan5/raylib.git
 # cd raylib/src/
 # make PLATFORM=PLATFORM_DESKTOP
@@ -18,10 +25,10 @@
 #source ~/tmp/emsdk/emsdk_env.fish or emsdk_env.sh
 emcc gcLib.c \
     -o build/gcLib_raw.js \
-    -I/home/archkubi/tmp/raylib/src \
-    -I/home/archkubi/tmp/raylib/src/external \
+    -I/Disk1/tmp/forWeb/raylib/src \
+    -I/Disk1/tmp/forWeb/raylib/src/external \
     -lm \
-    /home/archkubi/tmp/raylib/src/libraylib.web.a \
+    /Disk1/tmp/forWeb/raylib/src/libraylib.web.a \
     -DPLATFORM_WEB \
     -sUSE_GLFW=3 \
     -sASYNCIFY=1 \
@@ -135,6 +142,3 @@ emcc gcLib.c \
     -sENVIRONMENT=web \
     -sALLOW_MEMORY_GROWTH=1 \
     -sINITIAL_MEMORY=64MB
-
-
-

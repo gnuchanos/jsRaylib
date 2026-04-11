@@ -121,9 +121,7 @@ async function main() {
 	// Default Please Don't Remove this is not load asset .wasm can't see real file path
 	const AssetList = [
 		"resources/Font/OpenSans-Italic.ttf",
-		"resources/Images/bg.png",
-	
-
+		"resources/Images/logo.png",
 
 		// All Assets
 
@@ -134,14 +132,19 @@ async function main() {
 		FONT           : 0,
 		BG             : 1,
 
-
-
 		// All Assets
-
 
 	};
 
-  await gcLib.loadFiles(AssetList);
+	await gcLib.loadFiles(AssetList);
+	let LogoBootTimer = 5;
+	const LoadingForBoot = new gcLib.ProgressBar(
+		LogoBootTimer, 
+		gcLib.Vector2(ScreenWidth/2-(ScreenWidth/2)/2, 50),
+		gcLib.Vector2(ScreenWidth/2, 30),
+		gcLib.Colors.Purple5,
+		gcLib.Colors.Purple6
+	);
 	// Default Please Don't Remove
 
 	// All Scene
@@ -152,90 +155,14 @@ async function main() {
 		End      : 3
 	};
 
-	let CurrentScene = { Scene : GameScene.Logo };
-	const DefaultFont = gcLib.LoadFontFile(AssetList[AssetListIndex.FONT]);
-
-	// Boot Screen
-	const LogoBoot = gcLib.CreateTexture(AssetList[AssetListIndex.BG]);
-	gcLib.ChangeTextureHeight(LogoBoot, ScreenHeight);
-	gcLib.ChangeTextureWidth(LogoBoot, ScreenWidth);
-
-	let LogoBootTimer = 5;
-	let LoadingForBoot = new gcLib.ProgressBar(
-		LogoBootTimer, 
-		gcLib.Vector2(ScreenWidth/2-(ScreenWidth/2/2), 10), 
-		gcLib.Vector2(ScreenWidth/2, 60), 
-		gcLib.Colors.Purple3, gcLib.Colors.Purple5
+	let CurrentScene = GameScene.Logo;
+	const LogoBoot = new gcLib.Image(
+		AssetList[AssetListIndex.BG],
+		ScreenWidth/2-150, ScreenHeight/2-150, 300, 300, 0,
+		gcLib.Colors.White
 	);
 
-	// Menu Screen
-	const LOGO = new gcLib.ImageButton(
-		gcLib.CreateRectangle(1000, 60, 100, 100),
-		AssetList[AssetListIndex._Normal],
-		AssetList[AssetListIndex._Hover],
-		AssetList[AssetListIndex._Pressed],
-		gcLib.RGBA(255, 255, 255, 255)
-	);
-
-	class MainMenu {
-		constructor(DefaultFont, ScreenWidth, ScreenHeight) {
-			this.StartGameButton = new gcLib.Button (
-				"Start Game", gcLib.Vector2(100, 100), DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
-			);
-
-			this.ADButton = new gcLib.Button (
-				"Ad Reword", gcLib.Vector2(100, this.StartGameButton.ButtonSize.y + this.StartGameButton.ButtonSize.height + 30), 
-				DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
-			);
-
-			this.JsRaylibGithubButton = new gcLib.Button (
-				"JsRaylib Github", gcLib.Vector2(100, this.ADButton.ButtonSize.y + this.ADButton.ButtonSize.height + 30),
-				DefaultFont, 60, gcLib.Colors.Purple1, gcLib.Colors.Purple3, gcLib.Colors.Purple4, gcLib.Colors.Purple5
-			);
-
-			this.ButtonsBackground = gcLib.CreateRectangle (
-				// First Button
-				this.StartGameButton.ButtonSize.x - 30,
-				this.StartGameButton.ButtonSize.y - 30,
-
-				// Last Button
-				this.JsRaylibGithubButton.ButtonSize.width + 60,
-				this.JsRaylibGithubButton.ButtonSize.y + 60
-			);
-		}
-
-		Render() {
-
-			gcLib.DrawRecRounded(this.ButtonsBackground, 0.2, 3, gcLib.Colors.Purple1);
-			this.StartGameButton.Draw();
-			this.ADButton.Draw();
-			this.JsRaylibGithubButton.Draw();
-		}
-
-		Update(CurrentScene, Music) {
-			if (this.StartGameButton.Update()) {
-				CurrentScene.Scene = GameScene.GamePlay;
-			}
-
-			if (this.JsRaylibGithubButton.Update()) {
-				window.open("https://github.com/gnuchanos/jsRaylib", "_blank");
-			}
-
-			if (this.ADButton.Update()) {
-				showAd().then(() => {
-					console.log("Ad FAIL we gonna DIE i'm soo hungy");
-				});
-			}
-		}
-
-	}
-
-	const _MainMenu = new MainMenu(DefaultFont, ScreenWidth, ScreenHeight);
 	// Game Variables
-	
-
-
-
 
 
 
@@ -268,92 +195,71 @@ async function main() {
 
 	window.addEventListener("focus", () => {
 		if (!AdTRUE) {
-			DATA.Settings.MusicON = true;	
+			DATA.Settings.MusicON = true;
 			gcLib.SetTargetFPS(60); // restore normal fps
 		}
 	});
 
 	async function loop() {
     	if (!(await gcLib.WindowShouldClose())) {
+			if (AdBLOCK) {
+
+				// if someone use adblock
+
+			}
+
 			if (!AdTRUE) {
-
-				if (AdBLOCK) {
-
-					// if someone use adblock
-
-				}
-
-				if (CurrentScene.Scene == GameScene.Logo) {
+				if (CurrentScene == GameScene.Logo) {
 					if (LogoBootTimer > 0) {
 						LogoBootTimer -= gcLib.getFrameTime();
 						LoadingForBoot.UpdateMinus();
 					} else {
-						CurrentScene.Scene = GameScene.Menu;
+						CurrentScene = GameScene.Menu;
 					}
-				} else if (CurrentScene.Scene == GameScene.Menu) {
-					_MainMenu.Update(CurrentScene);
+				} else if (CurrentScene == GameScene.Menu) {
 
 
-					testMusicList.PlayMusic(DATA.Settings.MusicON);
-					// Test Change Music
-					if (gcLib.IsKeyPressed(gcLib.Keyboard.KEY_A)) {
-						testMusicList.NextMusic();
-					}
+				} else if (CurrentScene == GameScene.GamePlay) {
 
-
-				} else if (CurrentScene.Scene == GameScene.GamePlay) {
-
-				} else if (CurrentScene.Scene == GameScene.End) {
-
+				} else if (CurrentScene == GameScene.End) {
 
 				}
-				
 			}
-			
-			// this place not for update things just drawing for make simple
-			
-      gcLib.BeginDrawing();
-			gcLib.ClearBackground(gcLib.RGBA(6, 0, 13, 255));
+	// this place not for update things just drawing for make simple
+		gcLib.BeginDrawing();
+			gcLib.ClearBackground(gcLib.Colors.Purple8);
 
 			if (!AdTRUE) {
+				if (CurrentScene == GameScene.Logo) {
+					LogoBoot.Draw();
+					LoadingForBoot.Draw();
 
-			  if (CurrentScene.Scene == GameScene.Logo) {
-				  gcLib.DrawTexture(LogoBoot, 0, 0, gcLib.RGBA(255, 255, 255, 255))
-				  LoadingForBoot.Draw();
+				} else if (CurrentScene == GameScene.Menu) {
 
-			  } else if (CurrentScene.Scene == GameScene.Menu) {
-				  ImageTest.Draw();
+				} else if (CurrentScene == GameScene.GamePlay) {
 
-					_MainMenu.Render();
-					LOGO.Draw();
-					testB.Draw();
-
-
-				} else if (CurrentScene.Scene == GameScene.GamePlay) {
-
-				} else if (CurrentScene.Scene == GameScene.End) {
-
+				} else if (CurrentScene == GameScene.End) {
 
 				}
 			}
 
-			gcLib.DrawFPS(10, 10);
+			// gcLib.DrawFPS(10, 10);
 
 			gcLib.EndDrawing();
-            requestAnimationFrame(loop);
-      } else {
+			requestAnimationFrame(loop);
+		} else {
 
-        // Unload All Here
+		// Unload All Here
 		testMusicList.UnloadMusic();
 
-        // Unload All Here
-        gcLib.CloseWindow();
-        gcLib.CloseAudioDevice();
-    }
+		// Unload All Here
+		// gcLib.CloseWindow();
+		gcLib.CloseAudioDevice();
+		}
 
-  }
+	}
 
-  loop();
+	loop();
 }
 
 main();

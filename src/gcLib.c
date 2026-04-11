@@ -7,49 +7,99 @@
 
 
 // Simple Functions
-int add(int a, int b) { return a + b; }
-int gc_GetRandomNumber(int min, int max) { return GetRandomValue(min, max); }
-float gc_GetFrameTime() { return GetFrameTime(); }
+int add(int a, int b) { 
+	return a + b; 
+}
+int gc_GetRandomNumber(int min, int max) { 
+	return GetRandomValue(min, max); 
+}
+float gc_GetFrameTime() { 
+	return GetFrameTime(); 
+}
 
 
 
 // Raylib Window
-void gc_InitWindow(int Width, int Height, const char* Title) { InitWindow(Width, Height, Title); }
-bool gc_WindowShouldClose() { return WindowShouldClose(); }
-void gc_CloseWindow() { CloseWindow(); }
+void gc_InitWindow(int Width, int Height, const char* Title) { 
+	InitWindow(Width, Height, Title); 
+}
+bool gc_WindowShouldClose() { 
+	return WindowShouldClose(); 
+}
+void gc_CloseWindow() { 
+	CloseWindow(); 
+}
 
 // Audio Device
-void gc_InitAudioDevice() { InitAudioDevice(); }
-void gc_CloseAudioDevice() { CloseAudioDevice(); }
+void gc_InitAudioDevice() { 
+	InitAudioDevice(); 
+}
+void gc_CloseAudioDevice() { 
+	CloseAudioDevice(); 
+}
 
 // Base Draw
-void gc_BeginDrawing() { BeginDrawing(); }
-void gc_EndDrawing() { EndDrawing(); }
+void gc_BeginDrawing() { 
+	BeginDrawing(); 
+}
+void gc_EndDrawing() { 
+	EndDrawing(); 
+}
 
 // Press Keyboard
-bool gc_IsKeyPressed(int key) { return IsKeyPressed(key); }
-bool gc_IsKeyReleased(int key) { return IsKeyReleased(key); }
-bool gc_IsKeyUp(int key) { return IsKeyUp(key); }
-bool gc_IsKeyDown(int key) { return IsKeyDown(key); }
+bool gc_IsKeyPressed(int key) { 
+	return IsKeyPressed(key); 
+}
+bool gc_IsKeyReleased(int key) { 
+	return IsKeyReleased(key); 
+}
+bool gc_IsKeyUp(int key) { 
+	return IsKeyUp(key); 
+}
+bool gc_IsKeyDown(int key) { 
+	return IsKeyDown(key); 
+}
 
 // Press Mouse Button
-bool gc_IsMouseButtonPressed(int key) { return IsMouseButtonPressed(key); }
-bool gc_IsMouseButtonReleased(int key) { return IsMouseButtonReleased(key); }
-bool gc_IsMouseButtonUp(int key) {return IsMouseButtonUp(key); }
-bool gc_IsMouseButtonDown(int key) {return IsMouseButtonDown(key); }
-int gc_GetMousePositionX() {return GetMousePosition().x; }
-int gc_GetMousePositionY() { return GetMousePosition().y; }
-void gc_SetMousePosition(int x, int y) { SetMousePosition(x, y); }
-
+bool gc_IsMouseButtonPressed(int key) { 
+	return IsMouseButtonPressed(key); }
+bool gc_IsMouseButtonReleased(int key) { 
+	return IsMouseButtonReleased(key); 
+}
+bool gc_IsMouseButtonUp(int key) {
+	return IsMouseButtonUp(key); 
+}
+bool gc_IsMouseButtonDown(int key) {
+	return IsMouseButtonDown(key); 
+}
+int gc_GetMousePositionX() {
+	return GetMousePosition().x; 
+}
+int gc_GetMousePositionY() {
+	return GetMousePosition().y; 
+}
+void gc_SetMousePosition(int x, int y) { SetMousePosition(x, y); 
+}
 
 // Cursor
-void gc_ShowCursor(void) { ShowCursor(); }
-void gc_HideCursor(void) { HideCursor(); }
-bool gc_IsCursorHidden(void) { return IsCursorHidden(); }
-void gc_EnableCursor(void) { EnableCursor(); }
-void gc_DisableCursor(void) { DisableCursor(); }
-bool gc_IsCursorOnScreen(void){ return IsCursorOnScreen(); }
-
+void gc_ShowCursor(void) { 
+	ShowCursor(); 
+}
+void gc_HideCursor(void) { 
+	HideCursor();
+}
+bool gc_IsCursorHidden(void) { 
+	return IsCursorHidden(); 
+}
+void gc_EnableCursor(void) { 
+	EnableCursor(); 
+}
+void gc_DisableCursor(void) { 
+	DisableCursor(); 
+}
+bool gc_IsCursorOnScreen(void){ 
+	return IsCursorOnScreen();
+}
 
 // Camera2D
 Camera2D* gc_CreateCamera(float offsetX, float offsetY, float targetX, float targetY, float rotation, float zoom) {
@@ -76,7 +126,6 @@ void gc_MoveCamera2DY(Camera2D* cam2D, float TargetY) {
 }
 void gc_BeginMode2D(Camera2D* camera) { BeginMode2D(*camera); }
 void gc_EndMode2D(){ EndMode2D(); }
-
 
 // Audio - Sound
 Sound* gc_LoadSound(const char* Path) {
@@ -110,24 +159,28 @@ bool gc_SetSoundPitch(Sound* sound, float pitch) {
 	return false;
 }
 
-
 // Music
 Music* gc_LoadMusic(const char* Path) {
 	Music* msc = malloc(sizeof(Music));
 	*msc = LoadMusicStream(Path);
 	return msc;
 }
-
 void gc_UnloadMusic(Music* Music) {
 	UnloadMusicStream(*Music);
 	free(Music);
 }
-
-void gc_PlayMusic(Music* music) { PlayMusicStream(*music); }
-void gc_UpdateMusic(Music* music) { UpdateMusicStream(*music); }
-void gc_SetMusicPitch(Music *music, float Pitch) { SetMusicPitch(*music, Pitch); }
-void gc_SetMusicVolume(Music *music, float Volume) { SetMusicVolume(*music, Volume); }
-
+void gc_PlayMusic(Music* music) { 
+	PlayMusicStream(*music); 
+}
+void gc_UpdateMusic(Music* music) { 
+	UpdateMusicStream(*music); 
+}
+void gc_SetMusicPitch(Music *music, float Pitch) { 
+	SetMusicPitch(*music, Pitch); 
+}
+void gc_SetMusicVolume(Music *music, float Volume) { 
+	SetMusicVolume(*music, Volume); 
+}
 
 // Font
 Font* gc_LoadFont(const char* Path) {
@@ -135,17 +188,14 @@ Font* gc_LoadFont(const char* Path) {
 	*fnt = LoadFont(Path);
 	return fnt;
 }
-
 void gc_UnloadFont(Font* font) {
 	UnloadFont(*font);
 	free(font);
 }
-
 int gc_FontSizeX(const char* Text, Font* font, int FontSize, float TextSpacing) {
 	float X = MeasureTextEx(*font, Text, FontSize, TextSpacing).x;
 	return (int)(X);
 }
-
 int gc_FontSizeY(const char* Text, Font* font, int FontSize, float TextSpacing) {
 	float Y = MeasureTextEx(*font, Text, FontSize, TextSpacing).y;
 	return (int)(Y);
@@ -157,39 +207,48 @@ Texture2D* gc_LoadTexture(const char *Path) {
 	*txtr = LoadTexture(Path);
 	return  txtr;
 }
-
 void gc_UnloadTexture(Texture2D* texture) {
 	UnloadTexture(*texture);
 	free(texture);
 }
-
-int gc_GetTextureWidth(Texture* texture) { return texture->width; }
-int gc_GetTextureHeight(Texture* texture) { return texture->height; }
-void gc_ChangeTextureWidth(Texture* texture, float width) { texture->width = width; }
-void gc_ChangeTextureHeight(Texture* texture, float height) { texture->height = height; }
-void gc_DisableTextureFilter(Texture2D *texture) { SetTextureFilter(*texture, TEXTURE_FILTER_POINT); }
+int gc_GetTextureWidth(Texture* texture) { 
+	return texture->width; 
+}
+int gc_GetTextureHeight(Texture* texture) { 
+	return texture->height; 
+}
+void gc_ChangeTextureWidth(Texture* texture, float width) { 
+	texture->width = width; 
+}
+void gc_ChangeTextureHeight(Texture* texture, float height) { 
+	texture->height = height; 
+}
+void gc_DisableTextureFilter(Texture2D *texture) { 
+	SetTextureFilter(*texture, TEXTURE_FILTER_POINT); 
+}
 
 // Settings
-void gc_SetTargetFPS(int fps) { SetTargetFPS(fps); }
-
+void gc_SetTargetFPS(int fps) { 
+	SetTargetFPS(fps); 
+}
 void gc_ClearBackground(int R, int G, int B, int A) {
     Color color = CLITERAL(Color){R, G, B, A};
     ClearBackground(color);
 }
-
-void gc_SetConfigFlags(unsigned int flags) { SetConfigFlags(flags); }
-
+void gc_SetConfigFlags(unsigned int flags) { 
+	SetConfigFlags(flags); 
+}
 
 // Draw Text
-void gc_DrawFPS(int posX, int posY) { DrawFPS(posX, posY); }
+void gc_DrawFPS(int posX, int posY) { 
+	DrawFPS(posX, posY); 
+}
 void gc_DrawText(const char *Text, int X, int Y, float fontSize, int r, int g, int b, int a) {
 	DrawText(Text, X, Y, fontSize, CLITERAL(Color){(int)r, (int)g, (int)b, (int)a});
 }
 void gc_DrawTextEx(Font* font, const char *Text, int X, int Y, float fontSize, float TextSpacing, int r, int g, int b, int a) {
 	DrawTextEx(*font, Text, (Vector2){X, Y}, fontSize, TextSpacing, CLITERAL(Color){(int)r, (int)g, (int)b, (int)a});
 }
-
-
 
 // Rectangle
 void gc_DrawRectangleRec(float x, float y, float width, float heigh, float r, float g, float b, float a) {
@@ -213,8 +272,6 @@ void gc_DrawRectangleRoundedLines(float x, float y, float width, float height, f
 void gc_DrawRectangleRoundedLinesEx(float x, float y, float width, float height, float roundness, int segments, float lineThick, int r, int g, int b, int a) {
 	DrawRectangleRoundedLinesEx((Rectangle){x, y, width, height}, roundness, segments, lineThick, CLITERAL(Color){r, g, b, a});
 }
-
-
 
 // Texture Draw
 void gc_DrawTexture(Texture2D* texture, float posX, float posY, int r, int g, int b, int a) {
@@ -262,8 +319,6 @@ void gc_DrawTexturePro(
 // Extra
 bool gcFileExists(const char* filePath) { return FileExists(filePath); }
 
-
-
 // Check Collision
 bool gc_CheckCollisionRecs( float rec1X, float rec1Y, float rec1Width, float rec1Height, float rec2X, float rec2Y, float rec2Width, float rec2Height ) {
 		return CheckCollisionRecs(
@@ -289,9 +344,3 @@ bool gc_CheckCollisionMousetoRec( float PointX, float PointY, float RecX, float 
         (Rectangle){ RecX, RecY, RecWidth, RecHeight }
     );
 }
-
-
-
-
-
-
